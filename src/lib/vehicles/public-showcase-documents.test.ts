@@ -51,13 +51,29 @@ describe("partitionShowcaseSelectableDocuments", () => {
     expect(isShowcaseModificationDocument(umbau)).toBe(true);
     expect(isShowcaseModificationDocument(invoice)).toBe(false);
 
-    const { invoices, modifications } = partitionShowcaseSelectableDocuments([
-      umbau,
-      invoice,
-    ]);
+    const { invoices, modifications, manualEntries } =
+      partitionShowcaseSelectableDocuments([umbau, invoice]);
 
     expect(modifications.map((doc) => doc.id)).toEqual(["doc-1"]);
+    expect(manualEntries).toHaveLength(0);
     expect(invoices.map((doc) => doc.id)).toEqual(["doc-2"]);
+  });
+
+  it("lists manual service entries separately from invoices and umbauten", () => {
+    const service = baseDoc({
+      id: "manual-service",
+      title: "Ölwechsel",
+      category: "service",
+      invoice_number: "__manual__",
+      file_url: "manual://entry",
+    });
+
+    const { manualEntries, modifications, invoices } =
+      partitionShowcaseSelectableDocuments([service]);
+
+    expect(manualEntries.map((doc) => doc.id)).toEqual(["manual-service"]);
+    expect(modifications).toHaveLength(0);
+    expect(invoices).toHaveLength(0);
   });
 
   it("treats legacy manual Umbauten without category as modifications", () => {

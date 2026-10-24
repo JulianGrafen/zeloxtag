@@ -62,7 +62,7 @@ describe("dashboard tile mapping", () => {
     expect(featureForDashboardTile("oil-change")).toBe(
       FEATURE.ADD_MANUAL_SERVICE_ENTRY,
     );
-    expect(featureForDashboardTile("tuning-history")).toBe(
+    expect(featureForDashboardTile("modifications")).toBe(
       FEATURE.ADD_MANUAL_SERVICE_ENTRY,
     );
     expect(featureForDashboardTile("timeline")).toBe(

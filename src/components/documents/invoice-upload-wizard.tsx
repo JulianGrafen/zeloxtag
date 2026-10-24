@@ -34,6 +34,7 @@ import {
   WizardScanHeader,
   WizardShell,
 } from "@/components/documents/wizard-scan-shell";
+import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -728,20 +729,12 @@ export function InvoiceUploadWizard({
           ) : null}
         </header>
 
-        <div className="zt-feature-panel p-5">
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-            <ScanLine className="h-5 w-5" />
-          </div>
-          <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            {scanDef.title} · Hochladen
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-            PDF oder Bilder?
-          </h1>
-          <p className="mt-1 text-[0.85rem] text-[color:var(--vd-muted)]">
-            {vehicleLabel}
-          </p>
-        </div>
+        <AutomotiveFeatureTitlePanel
+          icon={<ScanLine className="h-5 w-5" aria-hidden />}
+          kicker={`${scanDef.title} · Hochladen`}
+          title="PDF oder Bilder?"
+          description={vehicleLabel}
+        />
 
         {error ? (
           <div className="rounded-xl bg-red-50 px-4 py-3 text-[0.85rem] text-red-700">

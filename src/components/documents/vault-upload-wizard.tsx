@@ -38,6 +38,7 @@ import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
+import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
 import { Button } from "@/components/ui/button";
 import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 import { materializeUploadFile } from "@/lib/documents/materialize-upload-file";
@@ -900,20 +901,13 @@ export function VaultUploadWizard({
         )}
       </header>
 
-      <div className="mt-4 zt-feature-panel p-5">
-        <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-          <Archive className="h-5 w-5" aria-hidden />
-        </div>
-        <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-          {VAULT_SCAN.heading}
-        </p>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-          {VAULT_SCAN.title} · Hochladen
-        </h1>
-        <p className="mt-1 text-[0.85rem] text-[color:var(--vd-muted)]">
-          {vehicleLabel} · {VAULT_SCAN.subheading}
-        </p>
-      </div>
+      <AutomotiveFeatureTitlePanel
+        className="mt-4"
+        icon={<Archive className="h-5 w-5" aria-hidden />}
+        kicker={VAULT_SCAN.heading}
+        title={`${VAULT_SCAN.title} · Hochladen`}
+        description={`${vehicleLabel} · ${VAULT_SCAN.subheading}`}
+      />
 
       {error ? (
         <div className="rounded-xl bg-red-50 px-4 py-3 text-[0.85rem] text-red-700">

@@ -16,6 +16,7 @@ import { showSavedToast } from "@/lib/ui/saved-toast";
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
+import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
 import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
 import {
   PressableButton,
@@ -204,14 +205,10 @@ export function ServiceInspectionsView({
             Dashboard
           </PressableLink>
 
-          <div className="zt-feature-panel p-5">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-              <Wrench className="h-5 w-5" aria-hidden />
-            </div>
-            <h1 className="mt-4 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-              Inspektionen
-            </h1>
-          </div>
+          <AutomotiveFeatureTitlePanel
+            icon={<Wrench className="h-5 w-5" aria-hidden />}
+            title="Inspektionen"
+          />
         </header>
 
         {inspections.length > 0 ? (

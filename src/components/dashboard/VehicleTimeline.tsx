@@ -4,8 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { TimelineEventDetailSheet } from "@/components/documents/timeline-event-detail-sheet";
-import { TimelineEventHeroImage } from "@/components/documents/timeline-event-hero-image";
-import { resolveTimelineEventImageUrl } from "@/lib/documents/timeline-event-image";
+import { TimelineEventDocumentPreview } from "@/components/documents/timeline-event-document-preview";
 import { resolveTimelineEventDocumentHref } from "@/lib/documents/timeline-event-href";
 import {
   formatTimelineCost,
@@ -251,7 +250,6 @@ function TimelineEventRow({
   const linkedDoc = event.documentId
     ? documentsById.get(event.documentId)
     : undefined;
-  const imageSrc = resolveTimelineEventImageUrl(linkedDoc);
   const costLabel = formatTimelineCost(event.cost);
   const dateLabel = formatTimelineDate(event.date);
   const mileageLabel = showMileage
@@ -311,7 +309,7 @@ function TimelineEventRow({
         ) : null}
       </div>
 
-      {imageSrc ? <TimelineEventHeroImage src={imageSrc} /> : null}
+      <TimelineEventDocumentPreview document={linkedDoc} />
 
       {event.description ? (
         <p className="mt-2.5 line-clamp-3 text-[0.84rem] leading-relaxed text-zinc-500">

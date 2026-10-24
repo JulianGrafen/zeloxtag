@@ -13,6 +13,7 @@ import { drawImageToCanvas, loadImageFromFile } from "@/lib/utils/image-loader";
 import type { QuadPoints } from "@/lib/utils/perspective";
 import { buildScanFromCorners } from "@/lib/utils/scan-pipeline";
 import type { DocumentType } from "@/types/database";
+import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
 import { Button } from "@/components/ui/button";
 import {
   GarageField,
@@ -155,17 +156,11 @@ export function InvoiceScannerForm({
           Zurück
         </PressableLink>
 
-        <div className="zt-feature-panel p-5">
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-            <FileText className="h-5 w-5" aria-hidden />
-          </div>
-          <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            Dokument-Scanner
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            Rechnung scannen
-          </h1>
-        </div>
+        <AutomotiveFeatureTitlePanel
+          icon={<FileText className="h-5 w-5" aria-hidden />}
+          kicker="Dokument-Scanner"
+          title="Rechnung scannen"
+        />
       </header>
 
       {step === "capture" ? (

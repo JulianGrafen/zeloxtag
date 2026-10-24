@@ -42,7 +42,7 @@ export function VehicleShowcaseModificationsSubmenu({
     <VehicleSettingsSubmenuLink
       href={vehicleSurfaceHref(surfaceScope, "einstellungen/umbauten")}
       variant={variant}
-      title="Umbauten & Rechnungen"
+      title="Chronik & Rechnungen"
       subtitle={subtitle}
       isLast={isLast}
     />

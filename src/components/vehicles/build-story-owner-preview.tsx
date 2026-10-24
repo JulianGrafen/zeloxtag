@@ -28,8 +28,8 @@ export function BuildStoryOwnerPreview({
   if (entries.length === 0) {
     return (
       <p className="px-4 py-3 text-[13px] leading-snug text-zinc-500">
-        Noch keine Einträge in der Chronik — aktiviere „In Chronik“ bei Umbauten
-        mit Foto.
+        Noch keine Einträge in der Chronik — lege Umbauten mit Foto im
+        Dashboard an und aktiviere dort „In Build-Story“.
       </p>
     );
   }

@@ -140,7 +140,7 @@ export function manualEntryEditPath(
   category: string | null | undefined,
   options?: { focusPhotos?: boolean },
 ): string {
-  const segment = isTuningLikeCategory(category) ? "umbauten" : "eintrag";
+  const segment = "umbauten";
   const params = new URLSearchParams({ edit: documentId });
   if (options?.focusPhotos) {
     params.set("photos", "1");

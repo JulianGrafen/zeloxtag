@@ -108,9 +108,9 @@ function ScanTile({
 
 function manualEntryHrefFromBack(backHref: string): string {
   const tagMatch = backHref.match(/^(\/v\/[^/?#]+)/);
-  if (tagMatch) return `${tagMatch[1]}/eintrag`;
+  if (tagMatch) return `${tagMatch[1]}/umbauten`;
   const garageMatch = backHref.match(/^(\/garage\/[^/?#]+)/);
-  if (garageMatch) return `${garageMatch[1]}/eintrag`;
+  if (garageMatch) return `${garageMatch[1]}/umbauten`;
   return "/";
 }
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Gauge, Save } from "lucide-react";
 
 import { updateVehicleSpecs } from "@/actions/update-vehicle-specs";
+import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
 import { useRegionalFormatters } from "@/lib/i18n/hooks/use-regional-formatters";
 import { VehicleSettingsSubmenuGroup } from "@/components/vehicles/vehicle-settings-submenu-group";
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
@@ -274,17 +275,10 @@ export function VehicleSpecsView({
             Dashboard
           </PressableLink>
 
-          <div className="zt-feature-panel flex items-center gap-3 p-4">
-            <span
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-neutral-900 text-white"
-              aria-hidden
-            >
-              <Gauge className="h-5 w-5" />
-            </span>
-            <h1 className="min-w-0 font-[family-name:var(--font-display)] text-[1.35rem] font-semibold leading-tight tracking-[-0.035em] text-[color:var(--vd-text)]">
-              Technische Daten
-            </h1>
-          </div>
+          <AutomotiveFeatureTitlePanel
+            icon={<Gauge className="h-5 w-5" aria-hidden />}
+            title="Technische Daten"
+          />
         </header>
 
         {error ? (

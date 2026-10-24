@@ -41,22 +41,39 @@ export function listShowcaseSelectableDocuments(documents: Document[]): Document
   );
 }
 
+export function isShowcaseManualEntryDocument(doc: Document): boolean {
+  return (
+    isManualVehicleEntry(doc) &&
+    !isShowcaseModificationDocument(doc) &&
+    parseManualEntryCategory(doc.category) === "service"
+  );
+}
+
+export function isShowcaseInvoiceDocument(doc: Document): boolean {
+  if (isManualVehicleEntry(doc)) return false;
+  return doc.type === "invoice";
+}
+
 export function partitionShowcaseSelectableDocuments(documents: Document[]): {
   invoices: Document[];
   modifications: Document[];
+  manualEntries: Document[];
 } {
   const invoices: Document[] = [];
   const modifications: Document[] = [];
+  const manualEntries: Document[] = [];
 
   for (const doc of listShowcaseSelectableDocuments(documents)) {
     if (isShowcaseModificationDocument(doc)) {
       modifications.push(doc);
-    } else {
+    } else if (isShowcaseManualEntryDocument(doc)) {
+      manualEntries.push(doc);
+    } else if (isShowcaseInvoiceDocument(doc)) {
       invoices.push(doc);
     }
   }
 
-  return { invoices, modifications };
+  return { invoices, modifications, manualEntries };
 }
 
 export function formatShowcaseDocumentLabel(doc: Document): string {

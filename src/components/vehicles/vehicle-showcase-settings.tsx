@@ -29,9 +29,10 @@ export function VehicleShowcaseSettings({
   hasLinkedTag,
   weeklyRank = null,
 }: VehicleShowcaseSettingsProps) {
-  const { invoices, modifications } =
+  const { invoices, modifications, manualEntries } =
     partitionShowcaseSelectableDocuments(documents);
-  const visibleShowcaseDocCount = [...modifications, ...invoices].filter(
+  const selectableDocs = [...modifications, ...manualEntries, ...invoices];
+  const visibleShowcaseDocCount = selectableDocs.filter(
     (doc) => doc.show_on_public_showcase,
   ).length;
   const isPublic = Boolean(vehicle.is_public);
@@ -62,7 +63,7 @@ export function VehicleShowcaseSettings({
         <IOSGroupedList headerTitle="Inhalte">
           <VehicleShowcaseModificationsSubmenu
             surfaceScope={surfaceScope}
-            modificationCount={modifications.length}
+            modificationCount={modifications.length + manualEntries.length}
             invoiceCount={invoices.length}
             visibleCount={visibleShowcaseDocCount}
             chronikEntryCount={chronikEntryCount}

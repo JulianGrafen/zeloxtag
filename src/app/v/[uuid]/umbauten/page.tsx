@@ -12,21 +12,14 @@ interface UmbautenPageProps {
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Umbauten · ZeloxTag",
-    description: "Umbau- und Tuning-Historie mit Fotos durchsuchen.",
+    description:
+      "Umbauten, Wartung und Fotos — manuell dokumentieren, mit oder ohne Beleg.",
   };
 }
 
 export default async function UmbautenPage({ params }: UmbautenPageProps) {
   const { uuid } = await params;
-  const { result, access, isDemoShowcase } = await requireTagWriter(uuid, {
-    load: {
-      documents: {
-        mode: "types",
-        types: ["invoice"],
-        columns: "invoice",
-      },
-    },
-  });
+  const { result, access, isDemoShowcase } = await requireTagWriter(uuid);
   const documents =
     access.isContributor && !access.isOwner
       ? result.documents.filter((doc) => doc.type === "invoice")
@@ -36,16 +29,15 @@ export default async function UmbautenPage({ params }: UmbautenPageProps) {
     isDemo: isDemoShowcase,
     ownerUserId: result.vehicle!.user_id,
     tagUuid: result.tag.uuid,
-    feature: FEATURE.VIEW_DOCUMENT_VAULT,
+    feature: FEATURE.ADD_MANUAL_SERVICE_ENTRY,
     children: (
       <ManualEntryView
         tagUuid={result.tag.uuid}
         vehicleId={result.vehicle!.id}
         vehicleLabel={`${result.vehicle!.make} ${result.vehicle!.model} · ${result.vehicle!.year}`}
         documents={documents}
-        variant="umbau"
-        heading="Umbau-Bilder"
-        subheading="Fotos von Tuning & Umbauten"
+        heading="Umbauten"
+        subheading="Umbauten, Wartung & Fotos"
       />
     ),
   });

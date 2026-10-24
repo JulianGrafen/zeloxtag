@@ -31,6 +31,7 @@ import {
   GarageInsetInput,
   GarageInsetTextarea,
 } from "@/components/ui/garage-field";
+import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
 import {
   PressableButton,
   PressableLink,
@@ -109,8 +110,8 @@ export function ManualEntryView({
   vehicleLabel,
   documents,
   initialListFilter = "all",
-  heading = "Manuelle Einträge",
-  subheading = "Mit optionalen Fotos",
+  heading = "Umbauten",
+  subheading = "Umbauten, Wartung & Fotos",
   variant = "default",
 }: ManualEntryViewProps) {
   const router = useRouter();
@@ -321,7 +322,7 @@ export function ManualEntryView({
       const scope = vehicleSurfaceScopeFromContext(tagUuid, vehicleId);
       const base = vehicleSurfaceHref(
         scope,
-        isUmbau ? "umbauten" : "eintrag",
+        "umbauten",
       );
       router.replace(base);
     }
@@ -671,18 +672,16 @@ export function ManualEntryView({
             Dashboard
           </PressableLink>
 
-          <div className="zt-feature-panel p-5">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-              {isUmbau ? (
+          <AutomotiveFeatureTitlePanel
+            icon={
+              isUmbau ? (
                 <ImagePlus className="h-5 w-5" aria-hidden />
               ) : (
                 <NotebookPen className="h-5 w-5" aria-hidden />
-              )}
-            </div>
-            <h1 className="mt-4 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-              {heading}
-            </h1>
-          </div>
+              )
+            }
+            title={heading}
+          />
         </header>
 
         {!showForm ? (

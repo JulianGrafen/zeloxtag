@@ -90,9 +90,9 @@ const CORE_MENU_TILE_SPECS: CoreTileSpec[] = [
     menuHighlight: true,
   },
   {
-    id: "tuning-history",
-    title: "Manuelle Einträge",
-    icon: "history",
+    id: "modifications",
+    title: "Umbauten",
+    icon: "images",
   },
   {
     id: "fuel-log",
@@ -146,11 +146,6 @@ function buildExtendedMenuTiles(data: VehicleDashboardData): TileDraft[] {
       id: "schrauber",
       title: "Werkstatt",
       icon: "users",
-    },
-    {
-      id: "modifications",
-      title: "Umbauten",
-      icon: "images",
     },
     {
       id: "specs",

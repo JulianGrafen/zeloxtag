@@ -13,6 +13,7 @@ import {
   GarageInsetInput,
   GarageInsetSelect,
 } from "@/components/ui/garage-field";
+import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
 import {
   PressableButton,
   PressableLink,
@@ -78,20 +79,12 @@ export function DocumentUploadForm({
           Zurück
         </PressableLink>
 
-        <div className="zt-feature-panel p-5">
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-            <Upload className="h-5 w-5" aria-hidden />
-          </div>
-          <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            Manuell
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            {lockType === "invoice" ? "Beleg hinzufügen" : "Datei hochladen"}
-          </h1>
-          <p className="mt-1 text-[0.9rem] text-[color:var(--vd-muted)]">
-            {vehicleLabel} · PDF oder Bild (Bilder werden optimiert)
-          </p>
-        </div>
+        <AutomotiveFeatureTitlePanel
+          icon={<Upload className="h-5 w-5" aria-hidden />}
+          kicker="Manuell"
+          title={lockType === "invoice" ? "Beleg hinzufügen" : "Datei hochladen"}
+          description={`${vehicleLabel} · PDF oder Bild (Bilder werden optimiert)`}
+        />
       </header>
 
       <form

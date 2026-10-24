@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import type { Document } from "@/types/database";
 
-import { resolveTimelineEventImageUrl } from "./timeline-event-image";
+import {
+  documentHasTimelinePreview,
+  resolveTimelineEventImageUrl,
+} from "./timeline-event-image";
 
 function stubDoc(partial: Partial<Document> & Pick<Document, "id">): Document {
   return {
@@ -45,7 +48,7 @@ describe("resolveTimelineEventImageUrl", () => {
     expect(url).toContain(encodeURIComponent(path));
   });
 
-  it("ignores PDFs and manual placeholders", () => {
+  it("ignores PDFs and manual placeholders for direct image URL", () => {
     expect(
       resolveTimelineEventImageUrl(
         stubDoc({ id: "doc-2", file_url: "manual://entry/doc-2" }),
@@ -56,9 +59,26 @@ describe("resolveTimelineEventImageUrl", () => {
         stubDoc({
           id: "doc-3",
           file_url:
-            "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/bbbbbbbb-cccc-dddd-eeee-ffffffffffff-scan.pdf",
+            "a0b1c2d3-e4f5-4678-89ab-cdef01234567/b1c2d3e4-f5a6-4789-abcd-ef0123456789-scan.pdf",
         }),
       ),
     ).toBeNull();
+  });
+
+  it("flags PDFs and images for chronik preview", () => {
+    expect(
+      documentHasTimelinePreview(
+        stubDoc({
+          id: "doc-4",
+          file_url:
+            "a0b1c2d3-e4f5-4678-89ab-cdef01234567/b1c2d3e4-f5a6-4789-abcd-ef0123456789-scan.pdf",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      documentHasTimelinePreview(
+        stubDoc({ id: "doc-5", file_url: "manual://entry/doc-5" }),
+      ),
+    ).toBe(false);
   });
 });

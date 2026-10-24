@@ -274,7 +274,7 @@ function VehicleInvoicesViewContent({
                 variant="button"
                 className={`${automotiveSecondaryButtonClassName} mt-3`}
               >
-                <BarChart3 className="h-4 w-4 text-amber-300" aria-hidden />
+                <BarChart3 className="h-4 w-4 text-current" aria-hidden />
                 Kostenübersicht
               </PressableLink>
             ) : null}
@@ -372,7 +372,7 @@ function VehicleInvoicesViewContent({
           tagUuid={tagUuid}
           directAction="scan"
           fuelLogHref={surfacePath(vehicleSurfaceScope, tagUuid, "tanken")}
-          manualEntryHref={`${surfacePath(vehicleSurfaceScope, tagUuid, "eintrag")}?neu=1`}
+          manualEntryHref={`${surfacePath(vehicleSurfaceScope, tagUuid, "umbauten")}?neu=1`}
           scanHref={ownerScanEntryHref(
             vehicleSurfaceScope,
             tagUuid,

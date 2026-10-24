@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { ScanProcessingPanel } from "@/components/documents/scan-processing-panel";
+import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
 import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import {
@@ -529,21 +530,12 @@ export function SingleClickTuevUpload({
       <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
         {backButton}
 
-        {/* Header */}
-        <div className="zt-feature-panel p-5">
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-            <CheckCircle2 className="h-5 w-5" />
-          </div>
-          <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            TÜV / HU · Erkannt
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-            Bericht auslesen
-          </h1>
-          <p className="mt-1 text-[0.85rem] text-[color:var(--vd-muted)]">
-            {vehicleLabel} · Bitte kurz prüfen, dann speichern.
-          </p>
-        </div>
+        <AutomotiveFeatureTitlePanel
+          icon={<CheckCircle2 className="h-5 w-5" aria-hidden />}
+          kicker="TÜV / HU · Erkannt"
+          title="Bericht auslesen"
+          description={`${vehicleLabel} · Bitte kurz prüfen, dann speichern.`}
+        />
 
         {/* Manual review warning */}
         {needsReview ? (
@@ -718,21 +710,12 @@ export function SingleClickTuevUpload({
     <section className="mx-auto flex min-h-dvh max-w-[440px] flex-col gap-4 px-4 py-6">
       {backButton}
 
-      {/* Header */}
-      <div className="zt-feature-panel p-5">
-        <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-          <CloudUpload className="h-5 w-5" />
-        </div>
-        <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-          TÜV / HU · Schnell hochladen
-        </p>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-          Foto oder PDF hochladen
-        </h1>
-        <p className="mt-1 text-[0.85rem] text-[color:var(--vd-muted)]">
-          {vehicleLabel}
-        </p>
-      </div>
+      <AutomotiveFeatureTitlePanel
+        icon={<CloudUpload className="h-5 w-5" aria-hidden />}
+        kicker="TÜV / HU · Schnell hochladen"
+        title="Foto oder PDF hochladen"
+        description={vehicleLabel}
+      />
 
       {/* Dropzone */}
       <div

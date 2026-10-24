@@ -11,6 +11,7 @@ import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import type { DocumentLineItem } from "@/types/database";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
 import { showSavedToast } from "@/lib/ui/saved-toast";
+import { cn } from "@/lib/utils";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "lineItems";
 
@@ -35,6 +36,8 @@ type EditableLineItemsSectionProps = {
   editPulse?: number;
   onEditRequestConsumed?: () => void;
   sectionId?: string;
+  /** Optional outer card (e.g. zt-feature-panel on Beleg-Detail). */
+  shellClassName?: string;
 };
 
 type DraftItem = {
@@ -93,6 +96,7 @@ export function EditableLineItemsSection({
   editPulse = 0,
   onEditRequestConsumed,
   sectionId,
+  shellClassName,
 }: EditableLineItemsSectionProps) {
   const inline = mode === "inline";
   const [editing, setEditing] = useState(inline);
@@ -174,8 +178,18 @@ export function EditableLineItemsSection({
     });
   }
 
-  return (
-    <section id={sectionId} className="scroll-mt-24 space-y-3">
+  const showSection =
+    inline ||
+    editing ||
+    displayItems.length > 0 ||
+    editRequest === EDIT_TARGET;
+
+  if (!showSection) {
+    return null;
+  }
+
+  const content = (
+    <div className="space-y-3">
       <div className="flex items-center justify-between gap-3 px-0.5">
         <h2 className={SECTION_HEADING_CLASS}>Positionen</h2>
         {!editing && !inline && !hideEditTrigger ? (
@@ -325,6 +339,23 @@ export function EditableLineItemsSection({
           ) : null}
         </ul>
       )}
+    </div>
+  );
+
+  if (shellClassName) {
+    return (
+      <section
+        id={sectionId}
+        className={cn("scroll-mt-24", shellClassName)}
+      >
+        {content}
+      </section>
+    );
+  }
+
+  return (
+    <section id={sectionId} className="scroll-mt-24 space-y-3">
+      {content}
     </section>
   );
 }

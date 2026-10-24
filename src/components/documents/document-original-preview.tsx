@@ -8,6 +8,10 @@ import { useFotodokuGallerySlides } from "@/components/documents/use-fotodoku-ga
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { readMockUploadFileFromSession } from "@/lib/documents/mock-upload-session-cache";
 import {
+  isGalleryPreviewKind,
+  resolveDocumentPreviewKind,
+} from "@/lib/documents/document-preview-kind";
+import {
   documentMediaKind,
   isViewableDocumentUrl,
   resolveDocumentViewUrl,
@@ -40,14 +44,8 @@ export function DocumentOriginalPreview({
     : proxyViewable
       ? resolveDocumentViewUrl(fileUrl)
       : null;
-  const previewKind = mockSessionSrc
-    ? documentMediaKind(fileUrl.split("/").pop() ?? fileUrl)
-    : proxyViewable
-      ? documentMediaKind(fileUrl)
-      : null;
-
-  const useFotodokuGallery =
-    previewKind != null && (previewKind === "image" || previewKind === "pdf");
+  const previewKind = resolveDocumentPreviewKind(fileUrl, mockSessionSrc);
+  const useFotodokuGallery = isGalleryPreviewKind(previewKind);
 
   const {
     slides: gallerySlides,
@@ -69,7 +67,7 @@ export function DocumentOriginalPreview({
 
   if (!canOpenOriginal || !previewSrc) {
     return (
-      <p className="rounded-xl bg-neutral-50 px-3 py-2.5 text-[0.8rem] text-[color:var(--vd-muted)]">
+      <p className="rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-2.5 text-[0.8rem] text-[color:var(--vd-muted)]">
         {isManual
           ? "Für diesen Eintrag liegt kein Foto vor."
           : fileUrl.startsWith("mock://")
@@ -83,7 +81,7 @@ export function DocumentOriginalPreview({
     if (galleryLoading && gallerySlides.length === 0) {
       return (
         <div
-          className="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-xl bg-neutral-50 text-[color:var(--vd-muted)]"
+          className="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-muted)]"
           aria-busy="true"
         >
           <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
@@ -114,21 +112,22 @@ export function DocumentOriginalPreview({
 
     if (gallerySlides.length > 0) {
       return (
-        <>
-          <DocumentFotodokuGallery slides={gallerySlides} />
-          <PressableLink
-            href={previewSrc}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="button"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
-          >
-            <FileText className="h-4 w-4" aria-hidden />
-            Original öffnen
-          </PressableLink>
-        </>
+        <DocumentFotodokuGallery slides={gallerySlides} layout="photos" />
       );
     }
+  }
+
+  if (
+    previewSrc &&
+    previewKind === "image" &&
+    !useFotodokuGallery
+  ) {
+    return (
+      <DocumentFotodokuGallery
+        slides={[{ src: previewSrc, alt: title }]}
+        layout="photos"
+      />
+    );
   }
 
   if (loadError) {

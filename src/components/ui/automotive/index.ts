@@ -1,5 +1,6 @@
 export { AutomotiveCard, AutomotiveCardLink } from "./AutomotiveCard";
 export { AutomotiveFeatureLayout } from "./AutomotiveFeatureLayout";
+export { AutomotiveFeatureTitlePanel } from "./AutomotiveFeatureTitlePanel";
 export { AutomotivePageHeader } from "./AutomotivePageHeader";
 export {
   AutomotiveEmptyPanel,

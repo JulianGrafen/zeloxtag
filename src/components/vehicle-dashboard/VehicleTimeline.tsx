@@ -11,8 +11,7 @@ import {
   formatTimelineCost,
   formatTimelineMileage,
 } from "@/lib/documents/timeline-format";
-import { TimelineEventHeroImage } from "@/components/documents/timeline-event-hero-image";
-import { resolveTimelineEventImageUrl } from "@/lib/documents/timeline-event-image";
+import { TimelineEventDocumentPreview } from "@/components/documents/timeline-event-document-preview";
 import type { TimelineEvent } from "@/lib/validations/timelineSchema";
 import type { Document } from "@/types/database";
 import { PressableButton, PressableLink } from "./Pressable";
@@ -89,7 +88,6 @@ export function VehicleDashboardTimeline({
           const linkedDoc = event.documentId
             ? documentsById.get(event.documentId)
             : undefined;
-          const imageSrc = resolveTimelineEventImageUrl(linkedDoc);
           const costLabel = formatTimelineCost(event.cost);
           const dateLabel = formatTimelineChronikDate(event.date);
           const mileageLabel = formatTimelineMileage(event.mileage, {
@@ -126,9 +124,10 @@ export function VehicleDashboardTimeline({
                 ) : null}
               </div>
 
-              {imageSrc ? (
-                <TimelineEventHeroImage src={imageSrc} className="mt-2" />
-              ) : null}
+              <TimelineEventDocumentPreview
+                document={linkedDoc}
+                className="mt-2"
+              />
 
               {(costLabel || showAbeBadge) ? (
                 <div className="mt-2 flex flex-wrap gap-2">

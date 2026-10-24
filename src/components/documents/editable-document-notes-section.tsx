@@ -69,6 +69,9 @@ export function EditableDocumentNotesSection({
     setEditing(false);
   }
 
+  const showSection =
+    editing || Boolean(displayNotes) || editRequest === EDIT_TARGET;
+
   function handleSave() {
     setError(null);
     const nextNotes = draft.trim() || null;
@@ -89,6 +92,10 @@ export function EditableDocumentNotesSection({
       setEditing(false);
       router.refresh();
     });
+  }
+
+  if (!showSection) {
+    return null;
   }
 
   return (

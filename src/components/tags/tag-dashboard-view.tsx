@@ -166,7 +166,7 @@ export function TagDashboardView({
   belowBrandBanner,
   hideBrandBanner = false,
 }: TagDashboardViewProps) {
-  const manualEntryHref = `${dashboardPath(vehicleSurfaceScope, tagUuid, "eintrag")}?neu=1`;
+  const manualEntryHref = `${dashboardPath(vehicleSurfaceScope, tagUuid, "umbauten")}?neu=1`;
   const path = (segment: string) =>
     dashboardPath(vehicleSurfaceScope, tagUuid, segment);
   const timelineEvents = useMemo(
@@ -333,28 +333,19 @@ export function TagDashboardView({
       };
     }
 
-    if (tile.id === "tuning-history") {
-      return {
-        ...tile,
-        meta: {
-          ...tile.meta,
-          href: path("eintrag"),
-          subtitle:
-            manualEntryCount > 0
-              ? `${manualEntryCount} manuelle Einträge`
-              : "Selbst eintragen",
-        },
-      };
-    }
-
     if (tile.id === "modifications") {
+      const subtitle =
+        manualEntryCount > 0
+          ? umbauCount > 0
+            ? `${manualEntryCount} Einträge · ${bilderLabel(umbauCount)}`
+            : `${manualEntryCount} Einträge`
+          : "Selbst eintragen";
       return {
         ...tile,
         meta: {
           ...tile.meta,
           href: path("umbauten"),
-          subtitle:
-            umbauCount > 0 ? bilderLabel(umbauCount) : "Keine Bilder",
+          subtitle,
         },
       };
     }
@@ -480,7 +471,7 @@ export function TagDashboardView({
           tile.id === "invoices" ||
           tile.id === "service" ||
           tile.id === "oil-change" ||
-          tile.id === "tuning-history"
+          tile.id === "modifications"
         );
       }
       return true;

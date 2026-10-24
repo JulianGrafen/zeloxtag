@@ -5,7 +5,7 @@ export const DASHBOARD_PRIMARY_TILE_IDS: readonly DashboardTileId[] = [
   "invoices",
   "oil-change",
   "abe",
-  "tuning-history",
+  "modifications",
   "fuel-log",
   "operating-costs",
 ] as const;

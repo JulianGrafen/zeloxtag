@@ -15,3 +15,14 @@ export function resolveTimelineEventImageUrl(
   if (documentMediaKind(document.file_url) !== "image") return null;
   return resolveDocumentViewUrl(document.file_url);
 }
+
+/** Whether the chronik row should attempt a photo preview (image or PDF page 1). */
+export function documentHasTimelinePreview(
+  document: Document | undefined | null,
+): boolean {
+  if (!document?.file_url) return false;
+  if (document.file_url.startsWith("mock://")) return true;
+  if (!isViewableDocumentUrl(document.file_url)) return false;
+  const kind = documentMediaKind(document.file_url);
+  return kind === "image" || kind === "pdf";
+}

@@ -80,15 +80,36 @@ interface DocumentInvoiceDetailViewProps {
   canDelete?: boolean;
 }
 
+const UUID_FILE_STEM =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function fileNameFromUrl(fileUrl: string, fallback: string): string {
   try {
     const path = fileUrl.split("?")[0] ?? fileUrl;
     const name = path.split("/").pop();
-    if (name && name.includes(".")) return decodeURIComponent(name);
+    if (name && name.includes(".")) {
+      const decoded = decodeURIComponent(name);
+      const stem = decoded.replace(/\.[^.]+$/, "");
+      if (UUID_FILE_STEM.test(stem)) {
+        return fallback;
+      }
+      return decoded;
+    }
   } catch {
     // ignore
   }
   return `${fallback.replace(/\s+/g, "_")}.pdf`;
+}
+
+function fotodokuSectionTitle(
+  isManual: boolean,
+  title: string,
+  fileName: string,
+): string {
+  if (isManual) {
+    return title.trim() || "Fotodoku";
+  }
+  return fileName;
 }
 
 /**
@@ -202,6 +223,7 @@ export function DocumentInvoiceDetailView({
     });
   }
   const fileName = fileNameFromUrl(document.file_url, title);
+  const fotodokuTitle = fotodokuSectionTitle(isManual, title, fileName);
   const issuedLabel = formatDocumentDateCompact(documentDate);
   const scannedLabel = formatDocumentDateCompact(document.created_at);
   const mileageLabel =
@@ -211,6 +233,12 @@ export function DocumentInvoiceDetailView({
     documentCategory?.trim() || document.category,
   );
   const invoiceNumberLabel = displayManualInvoiceNumber(document.invoice_number);
+  const showBelegnr = Boolean(invoiceNumberLabel);
+  const showDateField = canEditInvoice || Boolean(issuedLabel);
+  const showMileageEditable = isManual && canEditInvoice;
+  const showMileageReadOnly = !showMileageEditable && Boolean(mileageLabel);
+  const showInvoiceMetadata =
+    showBelegnr || showDateField || showMileageEditable || showMileageReadOnly;
 
   const tuevApprovalFields =
     document.approval_fields?.kind === "tuev"
@@ -389,66 +417,72 @@ export function DocumentInvoiceDetailView({
             )
           ) : null}
 
-          <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-t border-[color:var(--vd-border)] pt-3 text-[0.82rem]">
-            <div>
-              <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                Belegnr.
-              </dt>
-              <dd className="mt-0.5 font-medium tabular-nums text-[color:var(--vd-text)]">
-                {invoiceNumberLabel || "—"}
-              </dd>
-            </div>
-            <div>
-              {canEditInvoice ? (
-                <EditableDocumentDateSection
-                  documentId={document.id}
-                  vehicleId={document.vehicle_id}
-                  tagUuid={tagUuid}
-                  date={documentDate}
-                  onSaved={setDocumentDate}
-                  hideEditTrigger={useCentralEdit}
-                  editRequest={editRequest}
-                  editPulse={editPulse}
-                  onEditRequestConsumed={handleEditRequestConsumed}
-                  sectionId={INVOICE_DETAIL_EDIT_ANCHORS.date}
-                />
-              ) : (
-                <>
+          {showInvoiceMetadata ? (
+            <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-t border-[color:var(--vd-border)] pt-3 text-[0.82rem]">
+              {showBelegnr ? (
+                <div>
                   <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
-                    Datum
+                    Belegnr.
                   </dt>
-                  <dd className="mt-0.5 font-medium text-[color:var(--vd-text)]">
-                    {issuedLabel || "—"}
+                  <dd className="mt-0.5 font-medium tabular-nums text-[color:var(--vd-text)]">
+                    {invoiceNumberLabel}
                   </dd>
-                </>
-              )}
-            </div>
-            <div>
-              {isManual && canEditInvoice ? (
-                <EditableDocumentMileageSection
-                  documentId={document.id}
-                  vehicleId={document.vehicle_id}
-                  tagUuid={tagUuid}
-                  mileageKm={mileageKm}
-                  onSaved={setMileageKm}
-                  hideEditTrigger={useCentralEdit}
-                  editRequest={editRequest}
-                  editPulse={editPulse}
-                  onEditRequestConsumed={handleEditRequestConsumed}
-                  sectionId={INVOICE_DETAIL_EDIT_ANCHORS.mileage}
-                />
-              ) : (
-                <>
+                </div>
+              ) : null}
+              {showDateField ? (
+                <div>
+                  {canEditInvoice ? (
+                    <EditableDocumentDateSection
+                      documentId={document.id}
+                      vehicleId={document.vehicle_id}
+                      tagUuid={tagUuid}
+                      date={documentDate}
+                      onSaved={setDocumentDate}
+                      hideEditTrigger={useCentralEdit}
+                      editRequest={editRequest}
+                      editPulse={editPulse}
+                      onEditRequestConsumed={handleEditRequestConsumed}
+                      sectionId={INVOICE_DETAIL_EDIT_ANCHORS.date}
+                    />
+                  ) : (
+                    <>
+                      <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
+                        Datum
+                      </dt>
+                      <dd className="mt-0.5 font-medium text-[color:var(--vd-text)]">
+                        {issuedLabel}
+                      </dd>
+                    </>
+                  )}
+                </div>
+              ) : null}
+              {showMileageEditable ? (
+                <div>
+                  <EditableDocumentMileageSection
+                    documentId={document.id}
+                    vehicleId={document.vehicle_id}
+                    tagUuid={tagUuid}
+                    mileageKm={mileageKm}
+                    onSaved={setMileageKm}
+                    hideEditTrigger={useCentralEdit}
+                    editRequest={editRequest}
+                    editPulse={editPulse}
+                    onEditRequestConsumed={handleEditRequestConsumed}
+                    sectionId={INVOICE_DETAIL_EDIT_ANCHORS.mileage}
+                  />
+                </div>
+              ) : showMileageReadOnly ? (
+                <div>
                   <dt className="text-[0.68rem] uppercase tracking-[0.12em] text-[color:var(--vd-muted)]">
                     KM
                   </dt>
                   <dd className="mt-0.5 font-medium tabular-nums text-[color:var(--vd-text)]">
-                    {mileageLabel ?? "—"}
+                    {mileageLabel}
                   </dd>
-                </>
-              )}
-            </div>
-          </dl>
+                </div>
+              ) : null}
+            </dl>
+          ) : null}
         </section>
 
         {canEdit && tuevApprovalFields ? (
@@ -470,57 +504,45 @@ export function DocumentInvoiceDetailView({
         ) : null}
 
         {!isTuevDocument && canEditPositions ? (
-          <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-            <EditableLineItemsSection
-              items={lineItems}
-              documentId={document.id}
-              vehicleId={document.vehicle_id}
-              tagUuid={tagUuid}
-              totalAmount={documentAmount}
-              emptyHint={
-                isManual
-                  ? "Noch keine Positionen. Bearbeiten tippen, um Teile und Kosten einzutragen."
-                  : "Keine Positionen erkannt. Original-PDF unten öffnen."
-              }
-              hideEditTrigger={useCentralEdit}
-              editRequest={editRequest}
-              editPulse={editPulse}
-              onEditRequestConsumed={handleEditRequestConsumed}
-              sectionId={INVOICE_DETAIL_EDIT_ANCHORS.lineItems}
-            />
-          </section>
-        ) : !isTuevDocument ? (
+          <EditableLineItemsSection
+            items={lineItems}
+            documentId={document.id}
+            vehicleId={document.vehicle_id}
+            tagUuid={tagUuid}
+            totalAmount={documentAmount}
+            hideEditTrigger={useCentralEdit}
+            editRequest={editRequest}
+            editPulse={editPulse}
+            onEditRequestConsumed={handleEditRequestConsumed}
+            sectionId={INVOICE_DETAIL_EDIT_ANCHORS.lineItems}
+            shellClassName="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5"
+          />
+        ) : !isTuevDocument && lineItems.length > 0 ? (
           <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
             <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
               Positionen
             </h2>
-            {lineItems.length === 0 ? (
-              <p className="text-[0.88rem] text-[color:var(--vd-muted)]">
-                Keine Positionen erkannt. Original-PDF unten öffnen.
-              </p>
-            ) : (
-              <ul className="overflow-hidden rounded-xl border border-[color:var(--vd-border)]">
-                {lineItems.map((item, index) => (
-                  <li
-                    key={`${item.label}-${index}`}
-                    className={[
-                      "flex items-start justify-between gap-3 px-3 py-2.5 text-[0.88rem]",
-                      index % 2 === 0
-                        ? "bg-[color:var(--vd-surface)]"
-                        : "bg-[color:var(--vd-surface-elevated)]/80",
-                      index > 0 ? "border-t border-[color:var(--vd-border)]/60" : "",
-                    ].join(" ")}
-                  >
-                    <span className="min-w-0 flex-1 whitespace-pre-line text-[color:var(--vd-text)]">
-                      {item.label}
-                    </span>
-                    <span className="min-w-[6.75rem] shrink-0 text-right tabular-nums text-[color:var(--vd-text)]">
-                      {formatEur(item.amount)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ul className="overflow-hidden rounded-xl border border-[color:var(--vd-border)]">
+              {lineItems.map((item, index) => (
+                <li
+                  key={`${item.label}-${index}`}
+                  className={[
+                    "flex items-start justify-between gap-3 px-3 py-2.5 text-[0.88rem]",
+                    index % 2 === 0
+                      ? "bg-[color:var(--vd-surface)]"
+                      : "bg-[color:var(--vd-surface-elevated)]/80",
+                    index > 0 ? "border-t border-[color:var(--vd-border)]/60" : "",
+                  ].join(" ")}
+                >
+                  <span className="min-w-0 flex-1 whitespace-pre-line text-[color:var(--vd-text)]">
+                    {item.label}
+                  </span>
+                  <span className="min-w-[6.75rem] shrink-0 text-right tabular-nums text-[color:var(--vd-text)]">
+                    {formatEur(item.amount)}
+                  </span>
+                </li>
+              ))}
+            </ul>
             {document.amount !== null ? (
               <div className="mt-5 flex items-center justify-between border-t border-[color:var(--vd-border)] pt-3">
                 <span className="text-[0.95rem] font-bold tracking-[-0.02em] text-[color:var(--vd-text)]">
@@ -582,27 +604,34 @@ export function DocumentInvoiceDetailView({
           </div>
         ) : null}
 
-        <section className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
-          <div className="flex items-center justify-between gap-3 border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">
+        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
+          <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate text-[0.75rem] font-medium text-neutral-900">
-                {fileName}
-              </p>
-              <p className="text-[0.68rem] text-[color:var(--vd-muted)]">
+              <h2 className="mb-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
                 {isManual ? "Fotodoku" : "Original"}
-                {document.page_count && document.page_count > 1
-                  ? ` · ${document.page_count} Seiten`
-                  : ""}
-                {scannedLabel
-                  ? ` · ${isManual ? "erstellt" : "gescannt"} ${scannedLabel}`
-                  : ""}
+              </h2>
+              <p className="truncate text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+                {fotodokuTitle}
               </p>
+              {(document.page_count && document.page_count > 1) || scannedLabel ? (
+                <p className="mt-0.5 text-[0.75rem] leading-snug text-[color:var(--vd-muted)]">
+                  {document.page_count && document.page_count > 1
+                    ? `${document.page_count} Seiten`
+                    : null}
+                  {document.page_count && document.page_count > 1 && scannedLabel
+                    ? " · "
+                    : null}
+                  {scannedLabel
+                    ? `${isManual ? "Erstellt" : "Gescannt"} ${scannedLabel}`
+                    : null}
+                </p>
+              ) : null}
             </div>
             {canAddPhotos ? (
               <PressableButton
                 type="button"
                 variant="button"
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-neutral-900"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-1.5 text-[0.72rem] font-semibold text-[color:var(--vd-text)]"
                 onClick={() => setAddPhotosOpen(true)}
               >
                 <ImagePlus className="h-3.5 w-3.5" aria-hidden />
@@ -610,15 +639,13 @@ export function DocumentInvoiceDetailView({
               </PressableButton>
             ) : null}
           </div>
-          <div className="space-y-3 p-4">
-            <DocumentOriginalPreview
-              documentId={document.id}
-              fileUrl={document.file_url}
-              title={title}
-              isManual={isManual}
-              pageCount={document.page_count}
-            />
-          </div>
+          <DocumentOriginalPreview
+            documentId={document.id}
+            fileUrl={document.file_url}
+            title={title}
+            isManual={isManual}
+            pageCount={document.page_count}
+          />
         </section>
 
         {canDeleteInvoice ? (

@@ -31,6 +31,7 @@ import {
   WizardShell,
 } from "@/components/documents/wizard-scan-shell";
 import { SingleClickTuevUpload } from "@/components/documents/single-click-tuev-upload";
+import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
 import { Button } from "@/components/ui/button";
 import type { ApprovalFields } from "@/lib/documents/approval-fields";
 import { localDateIso } from "@/lib/documents/format";
@@ -590,21 +591,12 @@ export function TuevUploadWizard({
           ) : null}
         </header>
 
-        {/* Heading card */}
-        <div className="zt-feature-panel p-5">
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white">
-            <ScanLine className="h-5 w-5" />
-          </div>
-          <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-[0.2em] text-[color:var(--vd-muted)]">
-            TÜV / HU · Hochladen
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.4rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-            Wie möchtest du scannen?
-          </h1>
-          <p className="mt-1 text-[0.85rem] text-[color:var(--vd-muted)]">
-            {vehicleLabel}
-          </p>
-        </div>
+        <AutomotiveFeatureTitlePanel
+          icon={<ScanLine className="h-5 w-5" aria-hidden />}
+          kicker="TÜV / HU · Hochladen"
+          title="Wie möchtest du scannen?"
+          description={vehicleLabel}
+        />
 
         {/* Option 1: Guided Wizard (recommended) */}
         <button

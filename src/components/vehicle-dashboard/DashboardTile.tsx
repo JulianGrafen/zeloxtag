@@ -10,8 +10,6 @@ import {
   dashboardMenuCardCompactTitleClassName,
   dashboardMenuCardMetaClassName,
   dashboardMenuCardTitleClassName,
-  dashboardMenuIconWrapClassName,
-  dashboardMenuIconWrapCompactClassName,
   dashboardMenuTileHighlightClassName,
 } from "./dashboard-menu-styles";
 import { DASHBOARD_ICONS } from "./tile-icons";
@@ -44,20 +42,15 @@ export function DashboardTile({
   const content = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <span
+        <Icon
           className={cn(
-            compact
-              ? dashboardMenuIconWrapCompactClassName
-              : dashboardMenuIconWrapClassName,
+            "shrink-0 transition-transform duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] group-data-[pressed=true]:scale-90",
+            compact ? "h-[1.125rem] w-[1.125rem]" : "h-5 w-5",
             toneIconAccent[tone],
           )}
-        >
-          <Icon
-            className={compact ? "h-[1.125rem] w-[1.125rem]" : "h-5 w-5"}
-            strokeWidth={1.75}
-            aria-hidden
-          />
-        </span>
+          strokeWidth={1.75}
+          aria-hidden
+        />
 
         {tile.locked ? (
           <Lock className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />

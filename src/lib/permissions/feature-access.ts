@@ -87,6 +87,7 @@ export function featureForDashboardTile(tileId: string): FeatureFlag | null {
   if (
     tileId === "oil-change" ||
     tileId === "tuning-history" ||
+    tileId === "modifications" ||
     tileId === "timeline"
   ) {
     return FEATURE.ADD_MANUAL_SERVICE_ENTRY;
@@ -96,8 +97,7 @@ export function featureForDashboardTile(tileId: string): FeatureFlag | null {
     tileId === "invoices" ||
     tileId === "abe" ||
     tileId === "tuv" ||
-    tileId === "service" ||
-    tileId === "modifications"
+    tileId === "service"
   ) {
     return FEATURE.VIEW_DOCUMENT_VAULT;
   }

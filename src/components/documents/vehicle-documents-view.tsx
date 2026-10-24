@@ -424,7 +424,7 @@ export function VehicleDocumentsView({
                     <p className="text-[0.82rem] leading-relaxed">
                       Manuelle Einträge kannst du jederzeit kostenlos anlegen —{" "}
                       <PressableLink
-                        href={`${path("eintrag")}?neu=1`}
+                        href={`${path("umbauten")}?neu=1`}
                         className="font-medium text-[color:var(--vd-text)] underline-offset-2 hover:underline"
                       >
                         jetzt eintragen
@@ -470,7 +470,7 @@ export function VehicleDocumentsView({
           tagUuid={tagUuid}
           directAction="scan"
           fuelLogHref={surfacePath(vehicleSurfaceScope, tagUuid, "tanken")}
-          manualEntryHref={`${surfacePath(vehicleSurfaceScope, tagUuid, "eintrag")}?neu=1`}
+          manualEntryHref={`${surfacePath(vehicleSurfaceScope, tagUuid, "umbauten")}?neu=1`}
           scanHref={ownerScanEntryHref(
             vehicleSurfaceScope,
             tagUuid,
