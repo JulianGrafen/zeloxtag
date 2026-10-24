@@ -6,6 +6,7 @@ import { revalidateOwnerVehicleSurfaces } from "@/lib/vehicle-surface/revalidate
 
 import { parseLineItems } from "@/lib/documents/line-items";
 import { assertVehicleOwner } from "@/lib/vehicles/assert-owner";
+import { isBuildStoryEligibleDocument } from "@/lib/vehicles/build-story-document";
 import {
   listShowcaseLineItemOptions,
   parseShowcaseLineSelections,
@@ -29,6 +30,8 @@ export type UpdatePublicShowcaseDocumentsInput = {
   documentIds: string[];
   /** Selected line-item indexes per document (public Umbau positions). */
   lineSelections?: Record<string, number[]>;
+  /** Document ids with `show_on_build_story` (image manual umbauten only). */
+  buildStoryDocumentIds?: string[];
 };
 
 export type UpdatePublicShowcaseDocumentsResult =
@@ -45,6 +48,12 @@ export async function updatePublicShowcaseDocuments(
       input.documentIds.map((id) => id.trim()).filter(Boolean),
     );
     const lineSelections = parseShowcaseLineSelections(input.lineSelections);
+    const buildStorySelection =
+      input.buildStoryDocumentIds !== undefined
+        ? new Set(
+            input.buildStoryDocumentIds.map((id) => id.trim()).filter(Boolean),
+          )
+        : null;
 
     if (!vehicleId) {
       return { status: "error", message: "Fahrzeug fehlt." };
@@ -98,7 +107,9 @@ export async function updatePublicShowcaseDocuments(
 
     const { data: docs, error: docsError } = await admin
       .from("documents")
-      .select("id, line_items")
+      .select(
+        "id, line_items, invoice_number, category, file_url, show_on_build_story",
+      )
       .eq("vehicle_id", vehicleId);
 
     if (docsError) {
@@ -152,6 +163,68 @@ export async function updatePublicShowcaseDocuments(
             ? "Dokument-Auswahl braucht Migration 00031_document_public_showcase.sql in Supabase."
             : "Speichern fehlgeschlagen.",
         };
+      }
+    }
+
+    if (buildStorySelection) {
+      const eligibleIds = (docs ?? [])
+        .filter((row) =>
+          isBuildStoryEligibleDocument({
+            invoice_number: (row.invoice_number as string | null) ?? "",
+            category: row.category as string | null,
+            file_url: (row.file_url as string | null) ?? "",
+            show_on_build_story: row.show_on_build_story === true,
+          }),
+        )
+        .map((row) => row.id as string);
+
+      const storyToEnable = eligibleIds.filter((id) =>
+        buildStorySelection.has(id),
+      );
+      const storyToDisable = eligibleIds.filter(
+        (id) => !buildStorySelection.has(id),
+      );
+
+      if (storyToDisable.length > 0) {
+        const { error } = await admin
+          .from("documents")
+          .update({ show_on_build_story: false })
+          .eq("vehicle_id", vehicleId)
+          .in("id", storyToDisable);
+
+        if (error) {
+          logServerError(
+            "[update-public-showcase-documents] build story disable failed",
+            error,
+          );
+          return {
+            status: "error",
+            message: error.message.includes("show_on_build_story")
+              ? "Build-Chronik braucht die Spalte show_on_build_story in Supabase."
+              : "Chronik konnte nicht gespeichert werden.",
+          };
+        }
+      }
+
+      if (storyToEnable.length > 0) {
+        const { error } = await admin
+          .from("documents")
+          .update({ show_on_build_story: true })
+          .eq("vehicle_id", vehicleId)
+          .in("id", storyToEnable);
+
+        if (error) {
+          logServerError(
+            "[update-public-showcase-documents] build story enable failed",
+            error,
+          );
+          return {
+            status: "error",
+            message: error.message.includes("show_on_build_story")
+              ? "Build-Chronik braucht die Spalte show_on_build_story in Supabase."
+              : "Chronik konnte nicht gespeichert werden.",
+          };
+        }
       }
     }
 

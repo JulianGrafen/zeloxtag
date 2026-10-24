@@ -115,6 +115,7 @@ export const DOCUMENT_SHOWCASE_COLUMNS = [
   "amount",
   "date",
   "show_on_public_showcase",
+  "show_on_build_story",
   "created_at",
 ].join(", ");
 

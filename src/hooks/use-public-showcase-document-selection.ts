@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { updatePublicShowcaseDocuments } from "@/actions/update-public-showcase-documents";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { parseLineItems } from "@/lib/documents/line-items";
+import { isBuildStoryEligibleDocument } from "@/lib/vehicles/build-story-document";
 import {
   selectedShowcaseLineIndexes,
   showcaseLineItemsFromDocument,
@@ -19,6 +20,17 @@ function initialLineSelections(documents: Document[]): Record<string, number[]> 
     selections[doc.id] = selectedShowcaseLineIndexes(items);
   }
   return selections;
+}
+
+function initialBuildStoryIds(documents: Document[]): Set<string> {
+  return new Set(
+    documents
+      .filter(
+        (doc) =>
+          doc.show_on_build_story === true && isBuildStoryEligibleDocument(doc),
+      )
+      .map((doc) => doc.id),
+  );
 }
 
 type UsePublicShowcaseDocumentSelectionOptions = {
@@ -44,7 +56,14 @@ export function usePublicShowcaseDocumentSelection({
     [documents],
   );
 
+  const initialBuildStory = useMemo(
+    () => initialBuildStoryIds(documents),
+    [documents],
+  );
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(initialSelected);
+  const [buildStoryIds, setBuildStoryIds] =
+    useState<Set<string>>(initialBuildStory);
   const [lineSelections, setLineSelections] = useState<Record<string, number[]>>(
     () => initialLineSelections(documents),
   );
@@ -55,6 +74,7 @@ export function usePublicShowcaseDocumentSelection({
   function persistShowcase(
     nextIds: Set<string>,
     nextLines: Record<string, number[]>,
+    nextBuildStoryIds: Set<string>,
     rollback?: () => void,
   ) {
     startTransition(async () => {
@@ -64,6 +84,7 @@ export function usePublicShowcaseDocumentSelection({
         tagUuid,
         documentIds: [...nextIds],
         lineSelections: nextLines,
+        buildStoryDocumentIds: [...nextBuildStoryIds],
       });
 
       if (result.status === "error") {
@@ -82,8 +103,10 @@ export function usePublicShowcaseDocumentSelection({
 
     const previousIds = selectedIds;
     const previousLines = lineSelections;
+    const previousBuildStory = buildStoryIds;
     const nextIds = new Set(selectedIds);
     const nextLines = { ...lineSelections };
+    const nextBuildStory = new Set(buildStoryIds);
     const positions = showcaseLineItemsFromDocument(doc);
 
     if (enabled) {
@@ -97,9 +120,28 @@ export function usePublicShowcaseDocumentSelection({
 
     setSelectedIds(nextIds);
     setLineSelections(nextLines);
-    persistShowcase(nextIds, nextLines, () => {
+    persistShowcase(nextIds, nextLines, nextBuildStory, () => {
       setSelectedIds(previousIds);
       setLineSelections(previousLines);
+      setBuildStoryIds(previousBuildStory);
+    });
+  }
+
+  function toggleBuildStory(doc: Document, enabled: boolean) {
+    if (!canEdit || !isBuildStoryEligibleDocument(doc)) return;
+
+    const previousIds = selectedIds;
+    const previousLines = lineSelections;
+    const previousBuildStory = buildStoryIds;
+    const nextBuildStory = new Set(buildStoryIds);
+    if (enabled) nextBuildStory.add(doc.id);
+    else nextBuildStory.delete(doc.id);
+
+    setBuildStoryIds(nextBuildStory);
+    persistShowcase(selectedIds, lineSelections, nextBuildStory, () => {
+      setSelectedIds(previousIds);
+      setLineSelections(previousLines);
+      setBuildStoryIds(previousBuildStory);
     });
   }
 
@@ -112,6 +154,7 @@ export function usePublicShowcaseDocumentSelection({
 
     const previousIds = selectedIds;
     const previousLines = lineSelections;
+    const previousBuildStory = buildStoryIds;
     const nextIds = new Set(selectedIds);
     const current = new Set(lineSelections[documentId] ?? []);
     if (enabled) current.add(lineIndex);
@@ -130,14 +173,16 @@ export function usePublicShowcaseDocumentSelection({
 
     setSelectedIds(nextIds);
     setLineSelections(nextLines);
-    persistShowcase(nextIds, nextLines, () => {
+    persistShowcase(nextIds, nextLines, buildStoryIds, () => {
       setSelectedIds(previousIds);
       setLineSelections(previousLines);
+      setBuildStoryIds(previousBuildStory);
     });
   }
 
   return {
     selectedIds,
+    buildStoryIds,
     lineSelections,
     pending,
     message,
@@ -145,6 +190,7 @@ export function usePublicShowcaseDocumentSelection({
     setMessage,
     setError,
     toggleDocument,
+    toggleBuildStory,
     toggleLineItem,
   };
 }

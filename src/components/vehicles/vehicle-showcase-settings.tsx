@@ -4,6 +4,7 @@ import { VehiclePublicProfileSubmenu } from "@/components/vehicles/vehicle-publi
 import { VehicleShowcaseModificationsSubmenu } from "@/components/vehicles/vehicle-showcase-modifications-submenu";
 import { VehicleShowcaseStoryPassSubmenu } from "@/components/vehicles/vehicle-showcase-story-pass-submenu";
 import type { VehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-map";
+import { countBuildStoryChronikDocuments } from "@/lib/vehicles/build-story-owner-entries";
 import { partitionShowcaseSelectableDocuments } from "@/lib/vehicles/public-showcase-documents";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Document, Vehicle } from "@/types/database";
@@ -34,6 +35,7 @@ export function VehicleShowcaseSettings({
     (doc) => doc.show_on_public_showcase,
   ).length;
   const isPublic = Boolean(vehicle.is_public);
+  const chronikEntryCount = countBuildStoryChronikDocuments(documents);
 
   return (
     <div className="flex flex-col gap-5">
@@ -63,6 +65,8 @@ export function VehicleShowcaseSettings({
             modificationCount={modifications.length}
             invoiceCount={invoices.length}
             visibleCount={visibleShowcaseDocCount}
+            chronikEntryCount={chronikEntryCount}
+            isStoryPublic={Boolean(vehicle.is_story_public)}
             isLast
           />
         </IOSGroupedList>

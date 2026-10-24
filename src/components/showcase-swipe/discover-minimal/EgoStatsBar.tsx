@@ -97,23 +97,9 @@ export function EgoStatsBar({
           ) : null}
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.12em]",
-                  hasRank
-                    ? topThree
-                      ? "bg-amber-400/20 text-amber-100 ring-1 ring-amber-400/35"
-                      : "bg-sky-400/15 text-sky-100 ring-1 ring-sky-400/30"
-                    : "bg-white/10 text-zinc-300 ring-1 ring-white/15",
-                )}
-              >
-                Du
-              </span>
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                Deine Platzierung
-              </p>
-            </div>
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+              Deine Platzierung
+            </p>
             {hasRank ? (
               <p className="mt-1 text-[1.02rem] font-bold leading-snug tracking-tight text-white">
                 {topThree && rank === 1

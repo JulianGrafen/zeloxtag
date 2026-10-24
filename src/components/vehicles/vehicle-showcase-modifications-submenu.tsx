@@ -7,6 +7,8 @@ type VehicleShowcaseModificationsSubmenuProps = {
   modificationCount: number;
   invoiceCount: number;
   visibleCount: number;
+  chronikEntryCount?: number;
+  isStoryPublic?: boolean;
   variant?: "tile" | "group";
   isLast?: boolean;
 };
@@ -16,6 +18,8 @@ export function VehicleShowcaseModificationsSubmenu({
   modificationCount,
   invoiceCount,
   visibleCount,
+  chronikEntryCount = 0,
+  isStoryPublic = false,
   variant = "tile",
   isLast = false,
 }: VehicleShowcaseModificationsSubmenuProps) {
@@ -28,6 +32,10 @@ export function VehicleShowcaseModificationsSubmenu({
     subtitle = `${visibleCount} von ${totalCount} sichtbar`;
   } else {
     subtitle = `${totalCount} Belege · unsichtbar`;
+  }
+
+  if (isStoryPublic && chronikEntryCount > 0) {
+    subtitle = `${subtitle} · Chronik ${chronikEntryCount}`;
   }
 
   return (
