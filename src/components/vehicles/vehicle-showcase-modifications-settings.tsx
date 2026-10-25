@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { IOSGroupedList } from "@/components/ui/ios";
 import { ShowcaseBuildStoryChronikSection } from "@/components/vehicles/showcase-build-story-chronik-section";
 import { ShowcaseDocCollapsibleGroup } from "@/components/vehicles/showcase-doc-collapsible-group";
 import { ShowcaseDocumentPicker } from "@/components/vehicles/showcase-document-picker";
+import { ShowcaseModificationIosRow } from "@/components/vehicles/showcase-modification-ios-row";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { usePublicShowcaseDocumentSelection } from "@/hooks/use-public-showcase-document-selection";
 import {
@@ -38,16 +39,6 @@ function formatManualEntryMeta(doc: Document): string | null {
   if (doc.date) {
     parts.push(formatCompactGermanDate(doc.date));
   }
-  return parts.length > 0 ? parts.join(" · ") : null;
-}
-
-function formatModificationMeta(doc: Document): string | null {
-  const parts: string[] = [];
-  if (doc.date) parts.push(formatCompactGermanDate(doc.date));
-  if (doc.mileage_km != null) {
-    parts.push(`${doc.mileage_km.toLocaleString("de-DE")} km`);
-  }
-  if (doc.vendor?.trim()) parts.push(doc.vendor.trim());
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
@@ -104,13 +95,17 @@ export function VehicleShowcaseModificationsSettings({
     [documents],
   );
 
+  const [showPublishHint, setShowPublishHint] = useState(false);
+
   const {
     selectedIds,
+    buildStoryIds,
     lineSelections,
     pending,
     message,
     error,
     toggleDocument,
+    toggleBuildStory,
     toggleLineItem,
   } = usePublicShowcaseDocumentSelection({
     vehicleId: vehicle.id,
@@ -129,19 +124,7 @@ export function VehicleShowcaseModificationsSettings({
     selectedIds.has(doc.id),
   ).length;
 
-  const hasSelectableContent =
-    modifications.length > 0 ||
-    manualEntries.length > 0 ||
-    invoices.length > 0;
-
   const profileGroups = [
-    {
-      key: "modifications",
-      title: "Selbstgemachte Umbauten",
-      docs: modifications,
-      selectedCount: selectedModificationCount,
-      metaForDoc: formatModificationMeta,
-    },
     {
       key: "manual",
       title: "Manuelle Einträge",
@@ -158,7 +141,27 @@ export function VehicleShowcaseModificationsSettings({
     },
   ].filter((group) => group.docs.length > 0);
 
-  const visibleGroups = profileGroups.length > 0 ? profileGroups : [];
+  function handleToggleChronik(doc: Document, enabled: boolean) {
+    const wasEmpty = buildStoryIds.size === 0;
+    toggleBuildStory(doc, enabled);
+    if (
+      enabled &&
+      wasEmpty &&
+      !vehicle.is_story_public &&
+      Boolean(vehicle.is_public)
+    ) {
+      setShowPublishHint(true);
+    }
+  }
+
+  function editModificationHref(documentId: string): string {
+    const base = vehicleSurfaceScope
+      ? vehicleSurfaceHref(vehicleSurfaceScope, "umbauten")
+      : `/v/${tagUuid}/umbauten`;
+    return `${base}?edit=${documentId}`;
+  }
+
+  const hasProfileContent = profileGroups.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -169,21 +172,75 @@ export function VehicleShowcaseModificationsSettings({
         vehicleSurfaceScope={vehicleSurfaceScope}
         canEdit={canEdit}
         hasLinkedTag={hasLinkedTag}
+        showPublishHint={showPublishHint}
+        onDismissPublishHint={() => setShowPublishHint(false)}
       />
 
-      {hasSelectableContent ? (
+      <IOSGroupedList
+        headerTitle="Umbauten"
+        footerText={
+          modifications.length > 0
+            ? `${modifications.length} Einträge${
+                selectedModificationCount > 0
+                  ? ` · ${selectedModificationCount} im Showcase`
+                  : ""
+              }`
+            : "Manuelle Umbauten mit Foto — ideal für die Build-Chronik."
+        }
+      >
+        {canEdit ? (
+          <PressableLink
+            href={umbautenHref}
+            className="flex w-full items-center justify-center border-b border-white/10 px-4 py-3.5 text-[15px] font-semibold text-[#0A84FF]"
+          >
+            Umbau mit Foto
+          </PressableLink>
+        ) : null}
+        {modifications.length > 0 ? (
+          modifications.map((doc, index) => (
+            <ShowcaseModificationIosRow
+              key={doc.id}
+              doc={doc}
+              vehicleId={vehicle.id}
+              editHref={editModificationHref(doc.id)}
+              showcaseChecked={selectedIds.has(doc.id)}
+              chronikChecked={buildStoryIds.has(doc.id)}
+              disabled={!canEdit || pending}
+              isLast={index === modifications.length - 1}
+              onToggleShowcase={(value) => toggleDocument(doc, value)}
+              onToggleChronik={(value) => handleToggleChronik(doc, value)}
+            />
+          ))
+        ) : (
+          <div className="px-4 py-6 text-center">
+            <p className="text-[13px] leading-relaxed text-zinc-500">
+              Noch keine Umbauten.
+            </p>
+            {canEdit ? (
+              <PressableLink
+                href={umbautenHref}
+                className="mt-3 inline-block text-[14px] font-semibold text-[#0A84FF]"
+              >
+                Ersten Umbau anlegen
+              </PressableLink>
+            ) : null}
+          </div>
+        )}
+      </IOSGroupedList>
+
+      {hasProfileContent ? (
         <IOSGroupedList
           headerTitle="Im Profil zeigen"
-          footerText="Wähle Umbauten, manuelle Einträge und Rechnungen für dein öffentliches Showcase."
+          footerText="Manuelle Einträge und Rechnungen für dein öffentliches Showcase."
         >
-          {visibleGroups.map((group, index) => (
+          {profileGroups.map((group, index) => (
             <ShowcaseDocCollapsibleGroup
               key={group.key}
               title={group.title}
               count={group.docs.length}
               selectedCount={group.selectedCount}
               variant="ios"
-              isLast={index === visibleGroups.length - 1}
+              isLast={index === profileGroups.length - 1}
               defaultOpen={group.selectedCount > 0}
             >
               <ShowcaseDocumentPickerList
@@ -198,7 +255,7 @@ export function VehicleShowcaseModificationsSettings({
             </ShowcaseDocCollapsibleGroup>
           ))}
         </IOSGroupedList>
-      ) : (
+      ) : modifications.length === 0 ? (
         <IOSGroupedList headerTitle="Im Profil zeigen">
           <div className="px-4 py-5 text-center">
             <p className="text-[13px] leading-relaxed text-zinc-500">
@@ -222,7 +279,7 @@ export function VehicleShowcaseModificationsSettings({
             ) : null}
           </div>
         </IOSGroupedList>
-      )}
+      ) : null}
 
       {message ? (
         <p className="text-[0.82rem] text-[color:var(--vd-accent)]">{message}</p>

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -16,10 +15,6 @@ type BuildStoryOwnerPreviewProps = {
   className?: string;
 };
 
-function previewImageUnoptimized(src: string): boolean {
-  return src.startsWith("/api/");
-}
-
 export function BuildStoryOwnerPreview({
   entries,
   showcaseHref = null,
@@ -28,8 +23,8 @@ export function BuildStoryOwnerPreview({
   if (entries.length === 0) {
     return (
       <p className="px-4 py-3 text-[13px] leading-snug text-zinc-500">
-        Noch keine Einträge in der Chronik — lege Umbauten mit Foto im
-        Dashboard an und aktiviere dort „In Build-Story“.
+        Noch keine Einträge in der Chronik — lege Umbauten mit Foto an und
+        aktiviere unten bei jedem Umbau „In Chronik“.
       </p>
     );
   }
@@ -43,13 +38,12 @@ export function BuildStoryOwnerPreview({
             className="flex gap-3 overflow-hidden rounded-xl bg-black/30 p-2 ring-1 ring-white/10"
           >
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-zinc-900">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={entry.imageSrc}
                 alt=""
-                fill
-                className="object-cover"
-                sizes="64px"
-                unoptimized={previewImageUnoptimized(entry.imageSrc)}
+                decoding="async"
+                className="absolute inset-0 h-full w-full object-cover"
               />
             </div>
             <div className="min-w-0 flex-1 py-0.5">

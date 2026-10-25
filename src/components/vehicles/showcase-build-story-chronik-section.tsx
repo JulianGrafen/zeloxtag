@@ -10,7 +10,11 @@ import { VehicleIosSettingsToggleRow } from "@/components/vehicles/vehicle-ios-s
 import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { PRODUCTION_SITE_URL } from "@/lib/constants/public-site-url";
-import { listOwnerBuildStoryPreviewEntries } from "@/lib/vehicles/build-story-owner-entries";
+import {
+  countBuildStoryChronikDocuments,
+  countBuildStoryEligibleDocuments,
+  listOwnerBuildStoryPreviewEntries,
+} from "@/lib/vehicles/build-story-owner-entries";
 import { resolveShowcaseSharePath } from "@/lib/vehicles/public-profile-status";
 import { publicShowcasePath } from "@/lib/vehicles/public-slug";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
@@ -25,6 +29,8 @@ type ShowcaseBuildStoryChronikSectionProps = {
   vehicleSurfaceScope?: VehicleSurfaceScope;
   canEdit: boolean;
   hasLinkedTag: boolean;
+  showPublishHint?: boolean;
+  onDismissPublishHint?: () => void;
 };
 
 export function ShowcaseBuildStoryChronikSection({
@@ -34,6 +40,8 @@ export function ShowcaseBuildStoryChronikSection({
   vehicleSurfaceScope,
   canEdit,
   hasLinkedTag,
+  showPublishHint = false,
+  onDismissPublishHint,
 }: ShowcaseBuildStoryChronikSectionProps) {
   const isPublic = Boolean(vehicle.is_public);
   const [isStoryPublic, setIsStoryPublic] = useState(
@@ -42,6 +50,9 @@ export function ShowcaseBuildStoryChronikSection({
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const eligibleCount = countBuildStoryEligibleDocuments(documents);
+  const chronikCount = countBuildStoryChronikDocuments(documents);
+
   const previewEntries = useMemo(
     () => listOwnerBuildStoryPreviewEntries(vehicle.id, documents, 3),
     [vehicle.id, documents],
@@ -96,7 +107,12 @@ export function ShowcaseBuildStoryChronikSection({
 
   return (
     <div className="flex flex-col gap-3">
-      <IOSGroupedList headerTitle="Build-Chronik">
+      <IOSGroupedList
+        headerTitle="Build-Chronik"
+        footerText={`${eligibleCount} ${
+          eligibleCount === 1 ? "Eintrag" : "Einträge"
+        } mit Foto · ${chronikCount} in der Chronik`}
+      >
         <VehicleIosSettingsToggleRow
           label="Chronik öffentlich"
           sublabel="Chronologische Timeline für Profil- und QR-Besucher"
@@ -148,6 +164,29 @@ export function ShowcaseBuildStoryChronikSection({
           isLast
         />
       </IOSGroupedList>
+
+      {showPublishHint && !isStoryPublic && chronikCount > 0 && isPublic ? (
+        <div className="rounded-2xl bg-[#1C1C1E] px-4 py-3">
+          <p className="text-[13px] leading-snug text-zinc-400">
+            Chronik-Einträge sind gesetzt — veröffentliche die Chronik, damit
+            Besucher sie sehen.
+          </p>
+          <PressableButton
+            type="button"
+            variant="button"
+            className="mt-2 text-[13px] font-semibold text-[#0A84FF]"
+            disabled={!canEdit || !isPublic || pending}
+            onClick={() => {
+              const previous = isStoryPublic;
+              setIsStoryPublic(true);
+              saveStoryPublic(true, () => setIsStoryPublic(previous));
+              onDismissPublishHint?.();
+            }}
+          >
+            Chronik veröffentlichen
+          </PressableButton>
+        </div>
+      ) : null}
 
       {shareMessage ? (
         <p className="px-4 text-[13px] text-[#30D158]">{shareMessage}</p>
