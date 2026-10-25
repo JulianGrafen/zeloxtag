@@ -655,18 +655,56 @@ function proEntitledFromMembership(membership: Membership): boolean {
   });
 }
 
+/** When DB is behind Stripe (webhook lag, stale period end), refresh from the API. */
+export function membershipNeedsStripeReconcile(membership: Membership): boolean {
+  if (proEntitledFromMembership(membership)) return false;
+  const subId = membership.stripe_subscription_id?.trim();
+  const stripeLinked =
+    membership.billing_provider === "stripe" || Boolean(subId);
+  return stripeLinked && Boolean(subId);
+}
+
+async function linkMembershipRowToUserIfUnclaimed(
+  membership: Membership & { claim_token?: string | null },
+  userId: string,
+): Promise<Membership | null> {
+  if (membership.user_id) {
+    return membership.user_id === userId ? membership : null;
+  }
+  try {
+    await attachUser(membership.id, userId);
+  } catch (error) {
+    console.error(
+      "[memberships] auto-link by email failed",
+      error instanceof Error ? error.message : error,
+    );
+    return proEntitledFromMembership(membership) ? membership : null;
+  }
+  return getMembershipForUserUncached(userId);
+}
+
+async function resolveMembershipForUserId(
+  userId: string,
+): Promise<Membership | null> {
+  let membership = await getMembershipForUser(userId);
+  if (membership) return membership;
+
+  const email = await findUserEmailById(userId);
+  if (!email) return null;
+
+  const byEmail = await loadMembershipByEmail(email);
+  if (!byEmail) return null;
+
+  return linkMembershipRowToUserIfUnclaimed(byEmail, userId);
+}
+
 async function reconcileStripeMembershipIfStale(
   membership: Membership,
 ): Promise<Membership | null> {
   if (proEntitledFromMembership(membership)) return membership;
+  if (!membershipNeedsStripeReconcile(membership)) return membership;
   const subId = membership.stripe_subscription_id?.trim();
-  const stripeLinked =
-    membership.billing_provider === "stripe" || Boolean(subId);
-  if (!stripeLinked) return membership;
   if (!subId) return membership;
-  if (membership.status !== "pending" && membership.current_period_end) {
-    return membership;
-  }
   if (!isStripeSecretConfigured() || !membership.user_id) return membership;
 
   try {
@@ -689,7 +727,8 @@ async function reconcileStripeMembershipIfStale(
 }
 
 export async function userHasActiveMembership(userId: string): Promise<boolean> {
-  let membership = await getMembershipForUser(userId);
+  if (!userId) return false;
+  let membership = await resolveMembershipForUserId(userId);
   if (!membership) return false;
   if (proEntitledFromMembership(membership)) return true;
   membership =
