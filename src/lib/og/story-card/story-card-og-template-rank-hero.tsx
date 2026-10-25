@@ -6,6 +6,7 @@ import {
 } from "@/components/shareable-spec-card/weekly-rank-story-card-copy";
 import {
   WEEKLY_RANK_STORY_RANK_OFFSET_PX,
+  weeklyRankStoryFooterLogoPx,
   weeklyRankStoryKickerFontPx,
   weeklyRankStoryRankFontPx,
 } from "@/components/shareable-spec-card/weekly-rank-story-rank-typography";
@@ -45,7 +46,7 @@ export function StoryCardOgRankHeroTemplate({
   const rankSize = weeklyRankStoryRankFontPx(format) * scale;
   const kickerSize = weeklyRankStoryKickerFontPx(format) * scale;
   const modelSize = (isPost ? 56 : 72) * scale;
-  const logoHeight = (isPost ? 84 : 100) * scale;
+  const logoHeight = weeklyRankStoryFooterLogoPx(format) * scale;
 
   return (
     <div style={root}>

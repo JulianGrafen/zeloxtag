@@ -16,7 +16,7 @@ export function ShareCardZeloxMark({
       <img
         src={SHARE_CARD_ZELOX_MARK_SRC}
         alt="ZeloxTag — Dein Auto. Deine Story."
-        className="block w-auto max-w-[480px] object-contain object-left"
+        className="block w-auto max-w-[min(560px,92vw)] object-contain object-left"
         style={{ height: heightPx }}
         decoding="sync"
       />

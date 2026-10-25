@@ -1,7 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ThinkingOrb, type OrbSize, type OrbState } from "thinking-orbs";
+
+import { cn } from "@/lib/utils";
 
 export const SCAN_PROCESSING_HEADING = "Verarbeiten";
 export const SCAN_UPLOAD_HEADING = "Hochladen";
@@ -48,16 +51,24 @@ export function ScanAnalyzingFullscreen({
   children: ReactNode;
   className?: string;
 }) {
-  return (
+  const overlay = (
     <div
-      className={[
-        "mx-auto flex w-full min-h-[calc(100dvh-env(safe-area-inset-top))] max-w-[440px] flex-col items-center justify-center px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
+      className={cn(
+        "fixed inset-0 z-[100] flex items-center justify-center bg-[color:var(--vd-surface)] px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
         className,
-      ].join(" ")}
+      )}
     >
-      {children}
+      <div className="flex w-full max-w-[440px] flex-col items-center justify-center">
+        {children}
+      </div>
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return overlay;
+  }
+
+  return createPortal(overlay, document.body);
 }
 
 export function ScanProcessingPanel({

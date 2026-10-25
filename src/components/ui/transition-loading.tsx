@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { ThinkingOrb, type OrbState } from "thinking-orbs";
 
 import { RouteTransitionLoadingMarker } from "@/components/ui/route-transition-loading-marker";
@@ -58,7 +59,7 @@ export function RouteTransitionLoadingTrigger({
 
 /** Centered orb while a route segment is loading (see PageTransition). */
 export function RouteTransitionLoadingOverlay() {
-  return (
+  const overlay = (
     <div
       className="pointer-events-none fixed inset-0 z-[200] flex items-center justify-center bg-[color:var(--vd-surface)]"
       aria-hidden
@@ -71,6 +72,12 @@ export function RouteTransitionLoadingOverlay() {
       />
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return overlay;
+  }
+
+  return createPortal(overlay, document.body);
 }
 
 /** @deprecated Use AppShell + RouteTransitionLoadingTrigger in loading.tsx */

@@ -8,7 +8,10 @@ import {
 } from "@/lib/share/share-card-variant";
 
 import { ShareCardBuildDerWocheHeader } from "./ShareCardBuildDerWocheHeader";
-import { WEEKLY_RANK_STORY_RANK_OFFSET_PX } from "./weekly-rank-story-rank-typography";
+import {
+  WEEKLY_RANK_STORY_RANK_OFFSET_PX,
+  weeklyRankStoryFooterLogoPx,
+} from "./weekly-rank-story-rank-typography";
 import { ShareCardHeroMedia } from "./ShareCardHeroMedia";
 import { ShareCardInstagramHandle } from "./ShareCardInstagramHandle";
 import { ShareCardStoryFooterMark } from "./ShareCardStoryFooterMark";
@@ -29,7 +32,7 @@ export const ShareCardRankHeroPreview = forwardRef<
   const { width, height } = shareCardDimensions(format);
   const isPost = format === "post";
   const modelSizePx = isPost ? 56 : 72;
-  const footerLogoPx = isPost ? 84 : 100;
+  const footerLogoPx = weeklyRankStoryFooterLogoPx(format);
 
   return (
     <div

@@ -9,4 +9,9 @@ export function weeklyRankStoryKickerFontPx(format: ShareCardFormat): number {
   return format === "post" ? 48 : 64;
 }
 
+/** Footer Zelox wordmark on „Platzierung“ (rankHero) exports. */
+export function weeklyRankStoryFooterLogoPx(format: ShareCardFormat): number {
+  return format === "post" ? 112 : 140;
+}
+
 export const WEEKLY_RANK_STORY_RANK_OFFSET_PX = 48;

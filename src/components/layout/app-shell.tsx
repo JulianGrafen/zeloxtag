@@ -27,7 +27,10 @@ export function AppShell({
           showNavbar={showNavbar}
           immersiveNativeNav={immersiveNativeNav}
         >
-          <main className="flex min-w-0 flex-1 overflow-x-clip" data-surface="automotive">
+          <main
+            className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-clip"
+            data-surface="automotive"
+          >
             {children}
           </main>
         </AdaptiveNavShell>
