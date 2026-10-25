@@ -48,7 +48,8 @@ describe("publicSwipeCardToShowcaseCard", () => {
     const showcase = publicSwipeCardToShowcaseCard(card!);
     expect(showcase.publicSlug).toBe("supra-gr-2021");
     expect(showcase.publicSlug).not.toBe(card!.id);
-    expect(showcase.make).toContain("Supra");
+    expect(showcase.make).toBe("Toyota");
+    expect(showcase.model).toBe("GR Supra");
     expect(showcase.heroImageSrc).toBe(card!.thumbnailPath);
     expect(showcase.heroImageUsesCover).toBe(true);
     expect(showcase.buildPersonalityLabels).toEqual([]);

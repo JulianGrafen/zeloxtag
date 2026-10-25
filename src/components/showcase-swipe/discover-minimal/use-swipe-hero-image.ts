@@ -17,13 +17,17 @@ export function useSwipeHeroImage(
   }, [initialSrc]);
 
   const onError = useCallback(() => {
-    const catalog = resolveVehicleCatalogImage(make, model);
-    if (catalog?.src && catalog.src !== rawSrc) {
-      setRawSrc(catalog.src);
-      return;
-    }
-    setRawSrc("");
-  }, [make, model, rawSrc]);
+    setRawSrc((current) => {
+      const trimmed = current.trim();
+      if (!trimmed) return "";
+      if (trimmed.includes("/api/vehicle/catalog/")) return "";
+      const catalog = resolveVehicleCatalogImage(make, model);
+      if (catalog?.src && catalog.src !== trimmed) {
+        return catalog.src;
+      }
+      return "";
+    });
+  }, [make, model]);
 
   const displaySrc = rawSrc ? toShareCardImageFetchUrl(rawSrc) : "";
 

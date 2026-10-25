@@ -8,7 +8,7 @@ type ShareCardZeloxMarkProps = {
 /** ZeloxTag wordmark for the 1080×1920 Story export footer (bottom-left). */
 export function ShareCardZeloxMark({
   className,
-  heightPx = 152,
+  heightPx = 176,
 }: ShareCardZeloxMarkProps) {
   return (
     <div className={className}>
@@ -16,7 +16,7 @@ export function ShareCardZeloxMark({
       <img
         src={SHARE_CARD_ZELOX_MARK_SRC}
         alt="ZeloxTag — Dein Auto. Deine Story."
-        className="block w-auto max-w-[min(560px,92vw)] object-contain object-left"
+        className="block w-auto max-w-[min(680px,94vw)] object-contain object-left"
         style={{ height: heightPx }}
         decoding="sync"
       />

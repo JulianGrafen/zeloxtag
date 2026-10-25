@@ -11,7 +11,7 @@ export function weeklyRankStoryKickerFontPx(format: ShareCardFormat): number {
 
 /** Footer Zelox wordmark on „Platzierung“ (rankHero) exports. */
 export function weeklyRankStoryFooterLogoPx(format: ShareCardFormat): number {
-  return format === "post" ? 112 : 140;
+  return format === "post" ? 132 : 168;
 }
 
 export const WEEKLY_RANK_STORY_RANK_OFFSET_PX = 48;

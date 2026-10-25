@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 
+import { shareCardImageCrossOrigin } from "@/lib/share/share-card-image-cross-origin";
 import { cn } from "@/lib/utils";
 
 import { useSwipeHeroImage } from "./use-swipe-hero-image";
@@ -44,6 +45,7 @@ export function SwipeHeroImage({
       draggable={false}
       decoding={priority ? "sync" : "async"}
       loading={priority ? "eager" : "lazy"}
+      crossOrigin={shareCardImageCrossOrigin(initialSrc ?? "", displaySrc)}
       className={cn("absolute inset-0 h-full w-full", className)}
       style={style}
       onError={onError}

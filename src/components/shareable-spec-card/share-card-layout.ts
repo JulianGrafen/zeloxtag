@@ -22,9 +22,11 @@ export type ShareCardLayout = {
 };
 
 const STORY_HEIGHT_PX = 1920;
-const FOOTER_ZONE_PERCENT = 9;
+const FOOTER_ZONE_PERCENT = 10;
 const DNA_ZONE_PERCENT = 30;
-const FOOTER_BASE_PX = 168;
+const FOOTER_BASE_PX = 180;
+/** Comfortable showcase footer at 1080×1920 — keep OG Satori template in sync. */
+export const SHARE_CARD_FOOTER_LOGO_REFERENCE_PX = 200;
 const DNA_BLOCK_PX = 520;
 const HERO_INSTAGRAM_EXTRA_PERCENT = 3;
 const MODS_LINE_PX = 34;
@@ -98,7 +100,11 @@ export function computeShareCardLayout(
   }
 
   const footerLogoBase =
-    density === "dense" ? 132 : density === "compact" ? 152 : 172;
+    density === "dense"
+      ? 156
+      : density === "compact"
+        ? 178
+        : SHARE_CARD_FOOTER_LOGO_REFERENCE_PX;
   const footerLogoHeightPx = Math.round(footerLogoBase * heightScale);
 
   const dnaZonePercent = hasDna ? DNA_ZONE_PERCENT : 0;

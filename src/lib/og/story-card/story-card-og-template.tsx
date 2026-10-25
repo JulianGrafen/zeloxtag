@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 
+import { SHARE_CARD_FOOTER_LOGO_REFERENCE_PX } from "@/components/shareable-spec-card/share-card-layout";
 import {
   shareCardDimensions,
   type ShareCardFormat,
@@ -287,7 +288,10 @@ export function StoryCardOgTemplate({
           <img
             src={payload.logoDataUri}
             alt="ZeloxTag"
-            style={{ height: s(132), width: "auto" }}
+            style={{
+              height: s(SHARE_CARD_FOOTER_LOGO_REFERENCE_PX),
+              width: "auto",
+            }}
           />
         ) : (
           <div

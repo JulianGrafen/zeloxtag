@@ -7,6 +7,7 @@ import {
   buildContentSecurityPolicy,
   generateCspNonce,
   staticSecurityHeaderEntries,
+  vehicleImageSecurityHeaderEntries,
 } from "./csp";
 
 describe("buildContentSecurityPolicy", () => {
@@ -75,6 +76,15 @@ describe("applyProxiedResponseSecurityHeaders", () => {
     expect(response.headers.get("Cross-Origin-Embedder-Policy")).toBe(
       "credentialless",
     );
+  });
+});
+
+describe("vehicleImageSecurityHeaderEntries", () => {
+  it("uses cross-origin CORP so swipe heroes embed under COEP / Capacitor", () => {
+    const byKey = Object.fromEntries(
+      vehicleImageSecurityHeaderEntries().map((h) => [h.key, h.value]),
+    );
+    expect(byKey["Cross-Origin-Resource-Policy"]).toBe("cross-origin");
   });
 });
 

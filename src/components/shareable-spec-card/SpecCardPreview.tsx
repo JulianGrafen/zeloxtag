@@ -147,7 +147,7 @@ const ShowcaseSpecCardPreview = forwardRef<
             </div>
           ) : null}
 
-          <footer className="relative z-10 flex min-h-0 items-end border-t border-white/10 px-12 py-4">
+          <footer className="relative z-10 flex min-h-0 items-end border-t border-white/10 px-12 py-5">
             <ShareCardZeloxMark heightPx={layout.footerLogoHeightPx} />
           </footer>
         </div>

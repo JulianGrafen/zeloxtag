@@ -354,7 +354,7 @@ export function vehicleImageSecurityHeaderEntries(): Array<{
     },
     {
       key: "Cross-Origin-Resource-Policy",
-      value: "same-origin",
+      value: "cross-origin",
     },
     {
       key: "Referrer-Policy",

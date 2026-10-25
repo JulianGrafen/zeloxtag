@@ -18,6 +18,7 @@ import {
 } from "@/components/showcase-swipe/showcase-swipe-stack";
 import { Button } from "@/components/ui/button";
 import { useAnonymousSwipe } from "@/hooks/useAnonymousSwipe";
+import { apiFetch } from "@/lib/api/api-fetch";
 import { usePlatformServices } from "@/services/platform/context/platform-services-context";
 import { preloadImageHrefs } from "@/lib/image/preload-image-hrefs";
 import { ANONYMOUS_SWIPE_GATE_LIMIT } from "@/lib/public-swipe/anonymous-swipe-storage";
@@ -86,9 +87,8 @@ export function PublicSwipeExperience() {
       if (sessionHash) {
         params.set("sessionHash", sessionHash);
       }
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/public/swipe/cards?${params.toString()}`,
-        { credentials: "include" },
       );
       const body = (await response.json()) as {
         ok?: boolean;

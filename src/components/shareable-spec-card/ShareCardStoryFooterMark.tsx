@@ -6,11 +6,11 @@ type ShareCardStoryFooterMarkProps = {
 
 /** Centered black tile — weekly rank Story mockup footer. */
 export function ShareCardStoryFooterMark({
-  heightPx = 96,
+  heightPx = 112,
 }: ShareCardStoryFooterMarkProps) {
   return (
     <div
-      className="inline-flex items-center justify-center rounded-2xl bg-black px-9 py-[1.125rem] shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
+      className="inline-flex items-center justify-center rounded-2xl bg-black px-10 py-5 shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
     >
       <ShareCardZeloxMark heightPx={heightPx} />
     </div>

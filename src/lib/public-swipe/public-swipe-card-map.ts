@@ -68,6 +68,22 @@ function readIntField(
   return readInt(record[snakeKey] ?? record[camelKey], fallback);
 }
 
+/** Split RPC `car_name` (e.g. "BMW M3 · 2020") for catalog fallbacks on swipe heroes. */
+export function splitPublicSwipeCarName(carName: string): {
+  make: string;
+  model: string;
+} {
+  const withoutYear = carName.replace(/\s*·\s*\d{4}\s*$/, "").trim();
+  if (!withoutYear) {
+    return { make: carName.trim(), model: "" };
+  }
+  const parts = withoutYear.split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) {
+    return { make: withoutYear, model: "" };
+  }
+  return { make: parts[0], model: parts.slice(1).join(" ") };
+}
+
 export function mapPublicSwipeCardRow(row: unknown): PublicSwipeCard | null {
   if (!row || typeof row !== "object") return null;
   const record = row as Record<string, unknown>;
@@ -120,10 +136,11 @@ export function mapPublicSwipeCardRow(row: unknown): PublicSwipeCard | null {
 export function publicSwipeCardToShowcaseCard(
   card: PublicSwipeCard,
 ): ShowcaseSwipeCard {
+  const { make, model } = splitPublicSwipeCarName(card.carName);
   return {
     publicSlug: card.publicSlug,
-    make: card.carName.trim(),
-    model: "",
+    make,
+    model,
     year: null,
     totalLikes: card.upvotesCount,
     heroImageSrc: card.thumbnailPath,
