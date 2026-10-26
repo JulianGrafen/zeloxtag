@@ -1,19 +1,20 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Gauge, Save } from "lucide-react";
+import { ImageIcon, Save } from "lucide-react";
 
 import { updateVehicleSpecs } from "@/actions/update-vehicle-specs";
-import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
-import { useRegionalFormatters } from "@/lib/i18n/hooks/use-regional-formatters";
-import { VehicleSettingsSubmenuGroup } from "@/components/vehicles/vehicle-settings-submenu-group";
-import { VehicleSettingsSubmenuLink } from "@/components/vehicles/vehicle-settings-submenu-link";
+import { IOSListPage, InsetGroupedCard, InsetListRow } from "@/components/ui/ios";
 import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
+import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import {
-  PressableButton,
-  PressableLink,
-} from "@/components/vehicle-dashboard/Pressable";
+  SpecInputRow,
+  SpecSelectRow,
+  SpecTextArea,
+  SpecYearRow,
+} from "@/components/vehicles/vehicle-specs-form-rows";
+import { VehicleSpecsReadSections } from "@/components/vehicles/vehicle-specs-read-sections";
 import {
   DEFAULT_OIL_INTERVAL_MONTHS,
   resolveOilChangeInterval,
@@ -26,7 +27,6 @@ import {
   ACCEL_0_100_SEC_MIN,
   ACCEL_100_200_SEC_MAX,
   ACCEL_100_200_SEC_MIN,
-  formatAccelSecondsDe,
   formatAccelSecondsInput,
   formatOilChangeIntervalMonthsLabel,
   isAccelSecondsInputDraft,
@@ -40,16 +40,8 @@ import {
   VEHICLE_FUEL_TYPES,
   type VehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
-import {
-  GarageField,
-  GarageFieldCell,
-  GarageFieldRow,
-  garageFieldControlClassName,
-} from "@/components/ui/garage-field";
-import { GarageYearPickerField } from "@/components/ui/garage-year-picker-field";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import type { Vehicle } from "@/types/database";
-import { cn } from "@/lib/utils";
 
 type VehicleSpecsViewProps = {
   tagUuid: string;
@@ -57,32 +49,13 @@ type VehicleSpecsViewProps = {
   canEdit: boolean;
 };
 
-function Field({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor?: string;
-  children: ReactNode;
-}) {
-  return (
-    <GarageField label={label} htmlFor={htmlFor}>
-      {children}
-    </GarageField>
-  );
-}
+type EditableSpecKey = Exclude<
+  keyof VehicleTechSpecs,
+  "buildPersonalityTags" | "dynoChartUrl"
+>;
 
-function ReadRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-3 border-b border-[color:var(--vd-border)] px-4 py-3 last:border-b-0">
-      <span className="text-[0.78rem] text-[color:var(--vd-muted)]">{label}</span>
-      <span className="text-right text-[0.88rem] font-medium text-[color:var(--vd-text)]">
-        {value}
-      </span>
-    </div>
-  );
-}
+const SPECS_FORM_ID = "vehicle-tech-specs-form";
+const ACCEL_HINT_ID = "vehicle-specs-accel-hint";
 
 export function VehicleSpecsView({
   tagUuid,
@@ -90,7 +63,6 @@ export function VehicleSpecsView({
   canEdit,
 }: VehicleSpecsViewProps) {
   const router = useRouter();
-  const { formatPowerFromPs, formatPowerLabel } = useRegionalFormatters();
   const initialSpecs = parseVehicleTechSpecs(vehicle.tech_specs);
   const [make, setMake] = useState(vehicle.make);
   const [model, setModel] = useState(vehicle.model);
@@ -130,6 +102,15 @@ export function VehicleSpecsView({
       }
       return { ...prev, [key]: value || null };
     });
+  }
+
+  function specField(key: EditableSpecKey) {
+    return {
+      value: specs[key] ?? "",
+      onChange: (
+        event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+      ) => patchSpec(key, event.target.value),
+    };
   }
 
   function patchAccel0To100Text(value: string) {
@@ -257,440 +238,262 @@ export function VehicleSpecsView({
     }));
   }
 
+  const saveBar = canEdit ? (
+    <FixedBottomActionBar portal variant="ios">
+      <PressableButton
+        type="submit"
+        form={SPECS_FORM_ID}
+        variant="button"
+        disabled={pending}
+        className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-white text-[15px] font-semibold text-black disabled:opacity-60"
+      >
+        <Save className="h-4 w-4" aria-hidden />
+        {pending ? "Speichern…" : "Speichern"}
+      </PressableButton>
+    </FixedBottomActionBar>
+  ) : null;
+
   return (
-    <div className="vd-root relative min-h-dvh overflow-x-hidden">
-      <div
-        aria-hidden
-        className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
-      />
+    <IOSListPage
+      title="Fahrzeugdaten"
+      subtitle={title}
+      backHref={`/v/${tagUuid}`}
+      overlay={saveBar}
+    >
+      {error ? (
+        <p role="alert" className="px-4 text-[13px] text-[#FF453A]">
+          {error}
+        </p>
+      ) : null}
 
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-        <header className="vd-anim-header space-y-4">
-          <PressableLink
-            href={`/v/${tagUuid}`}
-            variant="pill"
-            className="vd-back-pill"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Dashboard
-          </PressableLink>
+      <InsetGroupedCard>
+        <InsetListRow
+          href={`/v/${tagUuid}/daten/fahrzeugbild`}
+          icon={ImageIcon}
+          iconTone="blue"
+          emphasis="navigation"
+          label="Fahrzeugbild"
+          value={profilePhotoUrl ? "Hinterlegt" : "Kein Foto"}
+        />
+      </InsetGroupedCard>
 
-          <AutomotiveFeatureTitlePanel
-            icon={<Gauge className="h-5 w-5" aria-hidden />}
-            title="Technische Daten"
-          />
-        </header>
-
-        {error ? (
-          <p
-            role="alert"
-            className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
-          >
-            {error}
-          </p>
-        ) : null}
-
-        <VehicleSettingsSubmenuGroup>
-          <VehicleSettingsSubmenuLink
-            href={`/v/${tagUuid}/daten/fahrzeugbild`}
-            variant="group"
-            title="Fahrzeugbild"
-            subtitle={profilePhotoUrl ? "Hinterlegt" : "Kein Foto"}
-          />
-        </VehicleSettingsSubmenuGroup>
-
-        {canEdit ? (
-          <>
-          <form
-            id="vehicle-tech-specs-form"
-            className="space-y-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              handleSave();
-            }}
-          >
-            <section className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
-              <h2 className="font-[family-name:var(--font-display)] text-[1rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-                Stammdaten
-              </h2>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Marke">
-                  <input
-                    required
-                    value={make}
-                    onChange={(event) => {
-                      setMake(event.target.value);
-                    }}
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="Toyota"
-                  />
-                </Field>
-                <Field label="Modell">
-                  <input
-                    required
-                    value={model}
-                    onChange={(event) => {
-                      setModel(event.target.value);
-                    }}
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="Supra"
-                  />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <GarageYearPickerField
-                  id="vehicle-year"
-                  label="Baujahr"
-                  value={year}
-                  onChange={setYear}
-                  required
-                />
-                <Field label="VIN">
-                  <input
-                    value={vin}
-                    onChange={(event) => {
-                      setVin(event.target.value.toUpperCase());
-                    }}
-                    className={cn(
-                      garageFieldControlClassName,
-                      "w-full min-h-[1.75rem] font-mono text-[0.85rem]",
-                    )}
-                    placeholder="optional"
-                    autoCapitalize="characters"
-                  />
-                </Field>
-              </div>
-            </section>
-
-            <section className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
-              <h2 className="font-[family-name:var(--font-display)] text-[1rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-                Antrieb & Fahrwerk
-              </h2>
-              <Field label="Motor / Aggregat">
-                <input
-                  value={specs.engine ?? ""}
-                  onChange={(event) => patchSpec("engine", event.target.value)}
-                  className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                  placeholder="z. B. 3.0 Twin-Turbo (2JZ-GTE)"
-                />
-              </Field>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Field label="PS">
-                  <input
-                    inputMode="numeric"
-                    value={specs.powerPs ?? ""}
-                    onChange={(event) =>
-                      patchSpec("powerPs", event.target.value)
-                    }
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="231"
-                  />
-                </Field>
-                <Field label="kW">
-                  <input
-                    inputMode="numeric"
-                    value={specs.powerKw ?? ""}
-                    onChange={(event) =>
-                      patchSpec("powerKw", event.target.value)
-                    }
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="170"
-                  />
-                </Field>
-                <Field label="Nm">
-                  <input
-                    inputMode="numeric"
-                    value={specs.torqueNm ?? ""}
-                    onChange={(event) =>
-                      patchSpec("torqueNm", event.target.value)
-                    }
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="350"
-                  />
-                </Field>
-                <Field label="ccm">
-                  <input
-                    inputMode="numeric"
-                    value={specs.displacementCc ?? ""}
-                    onChange={(event) =>
-                      patchSpec("displacementCc", event.target.value)
-                    }
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="1308"
-                  />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="0–100">
-                  <input
-                    inputMode="decimal"
-                    value={accel0To100Text}
-                    onChange={(event) =>
-                      patchAccel0To100Text(event.target.value)
-                    }
-                    onBlur={commitAccel0To100Text}
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="5,2"
-                    aria-describedby="accel-0-100-hint"
-                  />
-                </Field>
-                <Field label="100–200">
-                  <input
-                    inputMode="decimal"
-                    value={accel100To200Text}
-                    onChange={(event) =>
-                      patchAccel100To200Text(event.target.value)
-                    }
-                    onBlur={commitAccel100To200Text}
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="12,4"
-                    aria-describedby="accel-100-200-hint"
-                  />
-                </Field>
-                <Field label="V-Max">
-                  <input
-                    inputMode="numeric"
-                    value={specs.vmaxKmh ?? ""}
-                    onChange={(event) =>
-                      patchSpec("vmaxKmh", event.target.value)
-                    }
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="265"
-                  />
-                </Field>
-              </div>
-              <p
-                id="accel-0-100-hint"
-                className="text-[0.75rem] text-[color:var(--vd-muted)]"
-              >
-                Beschleunigungszeiten in Sekunden, V-Max in km/h (optional).
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Kraftstoff">
-                  <select
-                    value={specs.fuelType ?? ""}
-                    onChange={(event) =>
-                      patchSpec("fuelType", event.target.value)
-                    }
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                  >
-                    <option value="">—</option>
-                    {VEHICLE_FUEL_TYPES.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Getriebe">
-                  <input
-                    value={specs.transmission ?? ""}
-                    onChange={(event) =>
-                      patchSpec("transmission", event.target.value)
-                    }
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="6-Gang manuell"
-                  />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Antrieb">
-                  <select
-                    value={specs.drivetrain ?? ""}
-                    onChange={(event) =>
-                      patchSpec("drivetrain", event.target.value)
-                    }
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                  >
-                    <option value="">—</option>
-                    {VEHICLE_DRIVETRAIN_TYPES.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Karosserie">
-                  <input
-                    value={specs.bodyType ?? ""}
-                    onChange={(event) =>
-                      patchSpec("bodyType", event.target.value)
-                    }
-                    className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                    placeholder="Coupé"
-                  />
-                </Field>
-              </div>
-              <Field label="Farbe">
-                <input
-                  value={specs.color ?? ""}
-                  onChange={(event) => patchSpec("color", event.target.value)}
-                  className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                  placeholder="Velocity Red"
-                />
-              </Field>
-              <Field label="Instagram (öffentlich)">
-                <input
-                  value={specs.instagramHandle ?? ""}
-                  onChange={(event) =>
-                    patchSpec("instagramHandle", event.target.value)
-                  }
-                  className={cn(garageFieldControlClassName, "w-full min-h-[1.75rem]")}
-                  placeholder="@julian_f11"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                />
-              </Field>
-              <Field label="Spezifikationen">
-                <textarea
-                  rows={3}
-                  value={specs.notes ?? ""}
-                  onChange={(event) => patchSpec("notes", event.target.value)}
-                  className={cn(garageFieldControlClassName, "w-full min-h-[5.5rem] resize-none")}
-                  placeholder="Serienstand, Besonderheiten…"
-                />
-              </Field>
-            </section>
-
-            <section className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
-              <div>
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-                  Wartung
-                </p>
-                <p className="mt-1 text-[0.8rem] text-[color:var(--vd-muted)]">
-                  Für die Fälligkeit auf der Ölwechsel-Seite — wird beim
-                  Registrieren übernommen und kann hier angepasst werden.
-                </p>
-              </div>
-              <GarageFieldRow>
-                <GarageFieldCell
-                  label="Intervall (km)"
-                  htmlFor="oil-interval-km"
-                >
-                  <select
-                    id="oil-interval-km"
-                    value={oilIntervalKmSelectValue}
-                    onChange={(event) =>
-                      patchOilChangeIntervalKm(event.target.value)
-                    }
-                    className={cn(
-                      garageFieldControlClassName,
-                      "w-full min-h-[1.75rem] appearance-none bg-transparent",
-                    )}
-                  >
-                    {OIL_CHANGE_INTERVAL_KM_OPTIONS.map((km) => (
-                      <option key={km} value={String(km)}>
-                        {formatMileageKmNumber(km)} km
-                      </option>
-                    ))}
-                  </select>
-                </GarageFieldCell>
-                <GarageFieldCell
-                  label="Intervall (Monate)"
-                  htmlFor="oil-interval-months"
-                >
-                  <select
-                    id="oil-interval-months"
-                    value={oilIntervalMonthsSelectValue}
-                    onChange={(event) =>
-                      patchOilChangeIntervalMonths(event.target.value)
-                    }
-                    className={cn(
-                      garageFieldControlClassName,
-                      "w-full min-h-[1.75rem] appearance-none bg-transparent",
-                    )}
-                  >
-                    {OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.map((months) => (
-                      <option key={months} value={String(months)}>
-                        {formatOilChangeIntervalMonthsLabel(months)}
-                      </option>
-                    ))}
-                  </select>
-                </GarageFieldCell>
-              </GarageFieldRow>
-            </section>
-
-          </form>
-          <FixedBottomActionBar portal>
-            <PressableButton
-              type="submit"
-              form="vehicle-tech-specs-form"
-              variant="button"
-              disabled={pending}
-              className="claim-cta inline-flex w-full items-center justify-center gap-2"
-            >
-              <Save className="h-4 w-4" aria-hidden />
-              {pending ? "Speichern…" : "Speichern"}
-            </PressableButton>
-          </FixedBottomActionBar>
-          </>
-        ) : (
-          <section className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
-            <ReadRow label="Marke" value={vehicle.make} />
-            <ReadRow label="Modell" value={vehicle.model} />
-            <ReadRow
-              label="Baujahr"
-              value={vehicle.year != null ? String(vehicle.year) : "—"}
+      {canEdit ? (
+        <form
+          id={SPECS_FORM_ID}
+          className="flex flex-col gap-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSave();
+          }}
+        >
+          <InsetGroupedCard header="Stammdaten">
+            <SpecInputRow
+              id="vehicle-make"
+              label="Marke"
+              required
+              value={make}
+              onChange={(event) => setMake(event.target.value)}
+              placeholder="Toyota"
             />
-            {vehicle.vin ? <ReadRow label="VIN" value={vehicle.vin} /> : null}
-            {specs.engine ? (
-              <ReadRow label="Motor" value={specs.engine} />
-            ) : null}
-            {specs.powerPs != null || specs.powerKw != null ? (
-              <ReadRow
-                label={formatPowerLabel()}
-                value={[
-                  specs.powerPs != null ? formatPowerFromPs(specs.powerPs) : null,
-                  specs.powerKw != null ? `${specs.powerKw} kW` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              />
-            ) : null}
-            {specs.torqueNm != null ? (
-              <ReadRow label="Drehmoment" value={`${specs.torqueNm} Nm`} />
-            ) : null}
-            {specs.accel0To100Sec != null ? (
-              <ReadRow
-                label="0–100"
-                value={formatAccelSecondsDe(specs.accel0To100Sec)}
-              />
-            ) : null}
-            {specs.accel100To200Sec != null ? (
-              <ReadRow
-                label="100–200"
-                value={formatAccelSecondsDe(specs.accel100To200Sec)}
-              />
-            ) : null}
-            {specs.vmaxKmh != null ? (
-              <ReadRow label="V-Max" value={`${specs.vmaxKmh} km/h`} />
-            ) : null}
-            {specs.displacementCc != null ? (
-              <ReadRow label="Hubraum" value={`${specs.displacementCc} ccm`} />
-            ) : null}
-            {specs.fuelType ? (
-              <ReadRow label="Kraftstoff" value={specs.fuelType} />
-            ) : null}
-            {specs.transmission ? (
-              <ReadRow label="Getriebe" value={specs.transmission} />
-            ) : null}
-            {specs.drivetrain ? (
-              <ReadRow label="Antrieb" value={specs.drivetrain} />
-            ) : null}
-            {specs.bodyType ? (
-              <ReadRow label="Karosserie" value={specs.bodyType} />
-            ) : null}
-            {specs.color ? <ReadRow label="Farbe" value={specs.color} /> : null}
-            {specs.instagramHandle ? (
-              <ReadRow label="Instagram" value={`@${specs.instagramHandle}`} />
-            ) : null}
-            {specs.notes ? (
-              <ReadRow label="Spezifikationen" value={specs.notes} />
-            ) : null}
-            <ReadRow label="Ölwechsel-Intervall" value={oilIntervalLabel} />
-          </section>
-        )}
-      </div>
-    </div>
+            <SpecInputRow
+              id="vehicle-model"
+              label="Modell"
+              required
+              value={model}
+              onChange={(event) => setModel(event.target.value)}
+              placeholder="Supra"
+            />
+            <SpecYearRow
+              id="vehicle-year"
+              label="Baujahr"
+              value={year}
+              onChange={setYear}
+              required
+            />
+            <SpecInputRow
+              id="vehicle-vin"
+              label="VIN"
+              mono
+              value={vin}
+              onChange={(event) => setVin(event.target.value.toUpperCase())}
+              placeholder="optional"
+              autoCapitalize="characters"
+            />
+          </InsetGroupedCard>
+
+          <InsetGroupedCard header="Motor & Leistung">
+            <SpecInputRow
+              id="spec-engine"
+              label="Motor"
+              {...specField("engine")}
+              placeholder="z. B. 3.0 Twin-Turbo"
+            />
+            <SpecInputRow
+              id="spec-power-ps"
+              label="Leistung (PS)"
+              inputMode="numeric"
+              {...specField("powerPs")}
+              placeholder="231"
+            />
+            <SpecInputRow
+              id="spec-power-kw"
+              label="Leistung (kW)"
+              inputMode="numeric"
+              {...specField("powerKw")}
+              placeholder="170"
+            />
+            <SpecInputRow
+              id="spec-torque"
+              label="Drehmoment"
+              unit="Nm"
+              inputMode="numeric"
+              {...specField("torqueNm")}
+              placeholder="350"
+            />
+            <SpecInputRow
+              id="spec-displacement"
+              label="Hubraum"
+              unit="ccm"
+              inputMode="numeric"
+              {...specField("displacementCc")}
+              placeholder="1308"
+            />
+          </InsetGroupedCard>
+
+          <InsetGroupedCard
+            header="Fahrleistungen"
+            footer={
+              <span id={ACCEL_HINT_ID}>
+                Beschleunigungszeiten in Sekunden, V-Max in km/h (optional).
+              </span>
+            }
+          >
+            <SpecInputRow
+              id="spec-accel-0-100"
+              label="0–100 km/h"
+              unit="s"
+              inputMode="decimal"
+              value={accel0To100Text}
+              onChange={(event) => patchAccel0To100Text(event.target.value)}
+              onBlur={commitAccel0To100Text}
+              placeholder="5,2"
+              aria-describedby={ACCEL_HINT_ID}
+            />
+            <SpecInputRow
+              id="spec-accel-100-200"
+              label="100–200 km/h"
+              unit="s"
+              inputMode="decimal"
+              value={accel100To200Text}
+              onChange={(event) => patchAccel100To200Text(event.target.value)}
+              onBlur={commitAccel100To200Text}
+              placeholder="12,4"
+              aria-describedby={ACCEL_HINT_ID}
+            />
+            <SpecInputRow
+              id="spec-vmax"
+              label="V-Max"
+              unit="km/h"
+              inputMode="numeric"
+              {...specField("vmaxKmh")}
+              placeholder="265"
+            />
+          </InsetGroupedCard>
+
+          <InsetGroupedCard header="Antrieb & Karosserie">
+            <SpecSelectRow id="spec-fuel" label="Kraftstoff" {...specField("fuelType")}>
+              <option value="">—</option>
+              {VEHICLE_FUEL_TYPES.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </SpecSelectRow>
+            <SpecInputRow
+              id="spec-transmission"
+              label="Getriebe"
+              {...specField("transmission")}
+              placeholder="6-Gang manuell"
+            />
+            <SpecSelectRow id="spec-drivetrain" label="Antrieb" {...specField("drivetrain")}>
+              <option value="">—</option>
+              {VEHICLE_DRIVETRAIN_TYPES.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </SpecSelectRow>
+            <SpecInputRow
+              id="spec-body"
+              label="Karosserie"
+              {...specField("bodyType")}
+              placeholder="Coupé"
+            />
+            <SpecInputRow
+              id="spec-color"
+              label="Farbe"
+              {...specField("color")}
+              placeholder="Velocity Red"
+            />
+          </InsetGroupedCard>
+
+          <InsetGroupedCard header="Öffentlich">
+            <SpecInputRow
+              id="spec-instagram"
+              label="Instagram"
+              {...specField("instagramHandle")}
+              placeholder="@julian_f11"
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+          </InsetGroupedCard>
+
+          <InsetGroupedCard header="Spezifikationen">
+            <SpecTextArea
+              rows={3}
+              aria-label="Spezifikationen"
+              {...specField("notes")}
+              placeholder="Serienstand, Besonderheiten…"
+            />
+          </InsetGroupedCard>
+
+          <InsetGroupedCard
+            header="Wartung"
+            footer="Für die Fälligkeit auf der Ölwechsel-Seite — wird beim Registrieren übernommen und kann hier angepasst werden."
+          >
+            <SpecSelectRow
+              id="oil-interval-km"
+              label="Intervall"
+              value={oilIntervalKmSelectValue}
+              onChange={(event) => patchOilChangeIntervalKm(event.target.value)}
+            >
+              {OIL_CHANGE_INTERVAL_KM_OPTIONS.map((km) => (
+                <option key={km} value={String(km)}>
+                  {formatMileageKmNumber(km)} km
+                </option>
+              ))}
+            </SpecSelectRow>
+            <SpecSelectRow
+              id="oil-interval-months"
+              label="Zeitintervall"
+              value={oilIntervalMonthsSelectValue}
+              onChange={(event) => patchOilChangeIntervalMonths(event.target.value)}
+            >
+              {OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.map((months) => (
+                <option key={months} value={String(months)}>
+                  {formatOilChangeIntervalMonthsLabel(months)}
+                </option>
+              ))}
+            </SpecSelectRow>
+          </InsetGroupedCard>
+        </form>
+      ) : (
+        <VehicleSpecsReadSections
+          vehicle={vehicle}
+          specs={specs}
+          oilIntervalLabel={oilIntervalLabel}
+        />
+      )}
+    </IOSListPage>
   );
 }

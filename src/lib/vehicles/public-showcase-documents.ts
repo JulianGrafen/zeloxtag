@@ -1,9 +1,11 @@
 import {
+  isManualEntryMarker,
   isManualVehicleEntry,
   isTuningLikeCategory,
   parseManualEntryCategory,
 } from "@/lib/documents/manual-entries";
 import { isShowcaseGalleryDocument } from "@/lib/documents/showcase-gallery";
+import { hasStoredModificationImage } from "@/lib/vehicles/build-story-document";
 import type { Document } from "@/types/database";
 
 export function isPublicShowcaseDocument(doc: Document): boolean {
@@ -19,10 +21,23 @@ export function filterPublicShowcaseDocuments(documents: Document[]): Document[]
  * Settings and the public showroom must treat them as modifications, not Rechnungen.
  */
 export function isShowcaseModificationDocument(doc: Document): boolean {
-  if (!isManualVehicleEntry(doc)) return false;
-  if (parseManualEntryCategory(doc.category) === "service") return false;
-  // Legacy rows may lack category after minimal DB insert — treat as Umbau.
-  return isTuningLikeCategory(doc.category) || doc.category == null;
+  if (isShowcaseGalleryDocument(doc)) return false;
+
+  if (isManualVehicleEntry(doc)) {
+    const category = doc.category?.trim() ?? "";
+    const parsed = parseManualEntryCategory(category || null);
+    if (parsed === "service") {
+      return hasStoredModificationImage(doc);
+    }
+    // Legacy / minimal rows: empty category counts as Umbau.
+    return isTuningLikeCategory(doc.category) || category.length === 0;
+  }
+
+  if (doc.type !== "invoice" || isManualEntryMarker(doc.invoice_number)) {
+    return false;
+  }
+
+  return isTuningLikeCategory(doc.category) && hasStoredModificationImage(doc);
 }
 
 /** Invoices + manual tuning entries the owner can opt into the public profile. */

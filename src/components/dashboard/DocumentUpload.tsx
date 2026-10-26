@@ -74,11 +74,13 @@ export function DocumentUpload({
         />
         <div
           className={[
-            "flex items-center gap-3 rounded-xl border border-dashed border-[color:var(--vd-border)] bg-white px-3 py-3.5",
+            "flex items-center gap-3 rounded-xl border border-dashed border-[color:var(--vd-field-border)] bg-[color:var(--vd-field-bg)] px-3 py-3.5 shadow-[var(--vd-shadow-sm)]",
             busy ? "opacity-70" : "",
           ].join(" ")}
         >
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-900 text-white">
+          <span
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-icon-badge-bg)] text-[color:var(--vd-icon-badge-fg)]"
+          >
             {isCompressing ? (
               <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
             ) : (
@@ -89,7 +91,7 @@ export function DocumentUpload({
             <span className="block truncate text-[0.9rem] font-medium text-[color:var(--vd-text)]">
               {isCompressing ? (statusLabel ?? "Optimiere Dateien…") : label}
             </span>
-            <span className="block text-[0.75rem] text-[color:var(--vd-muted)]">
+            <span className="block text-[0.75rem] text-[color:var(--vd-field-label)]">
               {hint}
             </span>
           </span>

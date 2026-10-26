@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import QRCode from "qrcode";
 import {
   Check,
   Copy,
   Download,
-  Link2,
   QrCode,
   Trash2,
   UserPlus,
+  UserRound,
 } from "lucide-react";
 
 import {
@@ -19,8 +19,17 @@ import {
   setSchrauberReadHistory,
   type ContributorRow,
 } from "@/actions/vehicle-contributors";
+import {
+  IOS_SECTION_HEADER,
+  IOSEmptyState,
+  IOSSwitch,
+  InsetGroupedCard,
+  InsetListRow,
+  type IconBadgeTone,
+} from "@/components/ui/ios";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { formatDocumentDate } from "@/lib/documents/format";
+import { cn } from "@/lib/utils";
 
 type SchrauberManagePanelProps = {
   vehicleId: string;
@@ -29,39 +38,30 @@ type SchrauberManagePanelProps = {
   readOnly?: boolean;
 };
 
-function HistoryAccessToggle({
-  checked,
-  disabled,
-  onChange,
-  id,
-}: {
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (next: boolean) => void;
-  id: string;
-}) {
-  return (
-    <button
-      type="button"
-      id={id}
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border transition-colors disabled:opacity-50 ${
-        checked
-          ? "border-neutral-900 bg-neutral-900"
-          : "border-[color:var(--vd-border)] bg-[color:var(--vd-bg)]"
-      }`}
-    >
-      <span
-        className={`inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-7" : "translate-x-1"
-        }`}
-      />
-    </button>
-  );
-}
+const STATUS_PILL: Record<
+  ContributorRow["status"],
+  { label: string; className: string; tone: IconBadgeTone }
+> = {
+  invited: {
+    label: "Eingeladen",
+    className: "bg-amber-500/15 text-amber-400",
+    tone: "amber",
+  },
+  active: {
+    label: "Aktiv",
+    className: "bg-emerald-500/15 text-emerald-400",
+    tone: "green",
+  },
+  revoked: {
+    label: "Widerrufen",
+    className: "bg-red-500/15 text-red-400",
+    tone: "red",
+  },
+};
+
+const ROLE_LABEL: Record<ContributorRow["role"], string> = {
+  schrauber: "Werkstatt",
+};
 
 function resolveInviteOrigin(): string {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
@@ -82,6 +82,11 @@ function resolveInviteOrigin(): string {
   return window.location.origin;
 }
 
+function absoluteInvite(path: string): string {
+  const origin = resolveInviteOrigin();
+  return `${origin}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 async function buildInviteQrDataUrl(url: string): Promise<string> {
   return QRCode.toDataURL(url, {
     width: 512,
@@ -89,6 +94,190 @@ async function buildInviteQrDataUrl(url: string): Promise<string> {
     errorCorrectionLevel: "M",
     color: { dark: "#0a0a0a", light: "#ffffff" },
   });
+}
+
+function downloadDataUrl(dataUrl: string, fileName: string) {
+  const anchor = document.createElement("a");
+  anchor.href = dataUrl;
+  anchor.download = fileName;
+  anchor.click();
+}
+
+function contributorMeta(row: ContributorRow): string {
+  const base =
+    row.status === "invited" ? "Einladung offen" : row.userEmail || "Aktiv";
+  if (row.status !== "invited" || !row.expiresAt) return base;
+  return `${base} · gültig bis ${formatDocumentDate(row.expiresAt.slice(0, 10))}`;
+}
+
+function StatusPill({
+  className,
+  children,
+}: {
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function HistoryAccessRow({
+  checked,
+  disabled,
+  onChange,
+  description,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (next: boolean) => void;
+  description: string;
+}) {
+  return (
+    <InsetListRow
+      emphasis="navigation"
+      label="Alte Rechnungen anzeigen"
+      sublabel={description}
+      trailing={
+        <IOSSwitch
+          checked={checked}
+          disabled={disabled}
+          onCheckedChange={onChange}
+          ariaLabel="Alte Rechnungen anzeigen"
+        />
+      }
+    />
+  );
+}
+
+function InviteShareCard({
+  inviteUrl,
+  inviteQr,
+  copied,
+  fileName,
+  onCopy,
+}: {
+  inviteUrl: string;
+  inviteQr: string | null;
+  copied: boolean;
+  fileName: string;
+  onCopy: () => void;
+}) {
+  return (
+    <InsetGroupedCard
+      header="Einladung · Link & QR"
+      footer="Werkstatt scannt den QR oder öffnet den Link, gibt die E-Mail ein und tippt den Anmelde-Link — danach kann sie sofort Belege eintragen."
+    >
+      <div className="flex justify-center px-4 py-4">
+        {inviteQr ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={inviteQr}
+            alt="QR-Code zur Schrauber-Einladung"
+            width={220}
+            height={220}
+            className="h-auto w-[min(70vw,220px)] rounded-xl"
+          />
+        ) : (
+          <div className="flex h-[220px] w-[220px] items-center justify-center text-[13px] text-[#8E8E93]">
+            QR wird erzeugt…
+          </div>
+        )}
+      </div>
+      <InsetListRow
+        emphasis="navigation"
+        icon={copied ? Check : Copy}
+        iconTone={copied ? "green" : "blue"}
+        label={copied ? "Kopiert" : "Link kopieren"}
+        sublabel={<span className="break-all font-mono">{inviteUrl}</span>}
+        onPress={onCopy}
+        chevron={false}
+      />
+      {inviteQr ? (
+        <InsetListRow
+          emphasis="navigation"
+          icon={Download}
+          iconTone="blue"
+          label="QR speichern"
+          onPress={() => downloadDataUrl(inviteQr, fileName)}
+          chevron={false}
+        />
+      ) : null}
+    </InsetGroupedCard>
+  );
+}
+
+function ContributorCard({
+  row,
+  pending,
+  onShowQr,
+  onRevoke,
+  onReadHistoryChange,
+}: {
+  row: ContributorRow;
+  pending: boolean;
+  onShowQr?: () => void;
+  onRevoke: () => void;
+  onReadHistoryChange: (next: boolean) => void;
+}) {
+  const status = STATUS_PILL[row.status];
+
+  return (
+    <InsetGroupedCard>
+      <InsetListRow
+        emphasis="item"
+        icon={UserRound}
+        iconTone={status.tone}
+        label={row.label || row.userEmail || "Schrauber"}
+        sublabel={contributorMeta(row)}
+        trailing={
+          <span className="flex shrink-0 flex-col items-end gap-1">
+            <StatusPill className="bg-blue-500/15 text-blue-400">
+              {ROLE_LABEL[row.role]}
+            </StatusPill>
+            <StatusPill className={status.className}>{status.label}</StatusPill>
+          </span>
+        }
+      />
+      <HistoryAccessRow
+        checked={row.canReadHistory}
+        disabled={pending}
+        onChange={onReadHistoryChange}
+        description={
+          row.canReadHistory
+            ? "Sieht alte Rechnungen & Historie"
+            : "Nur neue Rechnungen einscannen"
+        }
+      />
+      {onShowQr ? (
+        <InsetListRow
+          emphasis="navigation"
+          icon={QrCode}
+          iconTone="neutral"
+          label="Einladungs-QR anzeigen"
+          onPress={onShowQr}
+          chevron={false}
+        />
+      ) : null}
+      <InsetListRow
+        emphasis="navigation"
+        icon={Trash2}
+        iconTone="red"
+        label="Zugang widerrufen"
+        destructive
+        disabled={pending}
+        onPress={onRevoke}
+        chevron={false}
+      />
+    </InsetGroupedCard>
+  );
 }
 
 export function SchrauberManagePanel({
@@ -133,293 +322,173 @@ export function SchrauberManagePanel({
     };
   }, [inviteUrl]);
 
-  const absoluteInvite = (path: string) => {
-    const origin = resolveInviteOrigin();
-    return `${origin}${path.startsWith("/") ? path : `/${path}`}`;
-  };
+  function handleCreateInvite() {
+    setMessage(null);
+    setInviteUrl(null);
+    setInviteQr(null);
+    setCopied(false);
+    startTransition(async () => {
+      const result = await createSchrauberInvite(
+        vehicleId,
+        label,
+        inviteCanReadHistory,
+      );
+      if (result.status === "error") {
+        setMessage(result.message);
+        return;
+      }
+      if (result.inviteUrl) {
+        setInviteUrl(absoluteInvite(result.inviteUrl));
+      }
+      const listed = await listVehicleContributors(vehicleId);
+      if (listed.status === "ok" && listed.contributors) {
+        setRows(listed.contributors);
+      }
+      setLabel("");
+      setInviteCanReadHistory(false);
+    });
+  }
+
+  async function handleCopyInvite() {
+    if (!inviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+    } catch {
+      setMessage("Kopieren fehlgeschlagen — Link manuell markieren.");
+    }
+  }
+
+  function handleShowQr(row: ContributorRow) {
+    setMessage(null);
+    setCopied(false);
+    setInviteUrl(absoluteInvite(`/einladung/${row.inviteToken}`));
+  }
+
+  function handleRevoke(row: ContributorRow) {
+    startTransition(async () => {
+      const result = await revokeSchrauberInvite(vehicleId, row.id);
+      if (result.status === "ok" && result.contributors) {
+        setRows(result.contributors);
+      } else if (result.status === "error") {
+        setMessage(result.message);
+      }
+    });
+  }
+
+  function handleReadHistoryChange(row: ContributorRow, next: boolean) {
+    setMessage(null);
+    setRows((current) =>
+      current.map((item) =>
+        item.id === row.id ? { ...item, canReadHistory: next } : item,
+      ),
+    );
+    startTransition(async () => {
+      const result = await setSchrauberReadHistory(vehicleId, row.id, next);
+      if (result.status === "ok" && result.contributors) {
+        setRows(result.contributors);
+      } else if (result.status === "error") {
+        setMessage(result.message);
+        const listed = await listVehicleContributors(vehicleId);
+        if (listed.status === "ok" && listed.contributors) {
+          setRows(listed.contributors);
+        }
+      }
+    });
+  }
 
   return (
-    <div className="space-y-5">
+    <>
       {readOnly ? (
-        <p className="zt-feature-panel border-dashed px-4 py-3 text-[0.85rem] text-[color:var(--vd-muted)]">
+        <IOSEmptyState>
           Demo — Einladungen und Schrauber-Verwaltung sind hier nur zur Ansicht.
-        </p>
+        </IOSEmptyState>
       ) : null}
-      <section className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]">
-        <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
-          Schrauber einladen
-        </h2>
-        <p className="mt-2 text-[0.88rem] leading-relaxed text-[color:var(--vd-muted)]">
-          Mit dem Link kann eine Werkstatt Reparaturen, Service und Rechnungen
-          für dieses Fahrzeug eintragen — per E-Mail-Link, ohne Passwort.
-        </p>
 
-        <label className="mt-4 block space-y-1.5">
-          <span className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-            Name / Werkstatt (optional)
-          </span>
-          <input
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            placeholder="z. B. Garage Nord"
-            disabled={readOnly}
-            className="w-full rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-3 py-3 text-[0.92rem] text-[color:var(--vd-text)] outline-none focus:border-neutral-400 disabled:opacity-60"
+      <div className="flex flex-col gap-3">
+        <InsetGroupedCard
+          header="Werkstatt einladen"
+          footer="Mit dem Link kann eine Werkstatt Reparaturen, Service und Rechnungen für dieses Fahrzeug eintragen — per E-Mail-Link, ohne Passwort."
+        >
+          <InsetListRow
+            emphasis="navigation"
+            label={<label htmlFor="schrauber-invite-label">Name</label>}
+            trailing={
+              <input
+                id="schrauber-invite-label"
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                placeholder="z. B. Garage Nord (optional)"
+                disabled={readOnly}
+                className="w-[62%] min-w-0 bg-transparent text-right text-[15px] text-white outline-none placeholder:text-[#48484A] disabled:opacity-60"
+              />
+            }
           />
-        </label>
-
-        <div className="mt-4 flex items-start justify-between gap-4 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-3 py-3">
-          <label htmlFor="invite-read-history" className="min-w-0 space-y-1">
-            <span className="block text-[0.9rem] font-medium text-[color:var(--vd-text)]">
-              Alte Rechnungen anzeigen
-            </span>
-            <span className="block text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
-              Aus: Werkstatt darf nur neue Rechnungen einscannen — ohne Einsicht
-              in bestehende Historie.
-            </span>
-          </label>
-          <HistoryAccessToggle
-            id="invite-read-history"
+          <HistoryAccessRow
             checked={inviteCanReadHistory}
             disabled={readOnly || pending}
             onChange={setInviteCanReadHistory}
+            description="Aus: Werkstatt darf nur neue Rechnungen einscannen — ohne Einsicht in bestehende Historie."
           />
-        </div>
+        </InsetGroupedCard>
 
         <PressableButton
           type="button"
           variant="button"
           disabled={readOnly || pending}
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white disabled:opacity-60"
-          onClick={() => {
-            setMessage(null);
-            setInviteUrl(null);
-            setInviteQr(null);
-            setCopied(false);
-            startTransition(async () => {
-              const result = await createSchrauberInvite(
-                vehicleId,
-                label,
-                inviteCanReadHistory,
-              );
-              if (result.status === "error") {
-                setMessage(result.message);
-                return;
-              }
-              if (result.inviteUrl) {
-                setInviteUrl(absoluteInvite(result.inviteUrl));
-              }
-              const listed = await listVehicleContributors(vehicleId);
-              if (listed.status === "ok" && listed.contributors) {
-                setRows(listed.contributors);
-              }
-              setLabel("");
-              setInviteCanReadHistory(false);
-            });
-          }}
+          className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-white text-[15px] font-semibold text-black disabled:opacity-60"
+          onClick={handleCreateInvite}
         >
           <UserPlus className="h-4 w-4" aria-hidden />
           Einladungslink erstellen
         </PressableButton>
 
-        {inviteUrl ? (
-          <div className="mt-4 space-y-3 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] p-3">
-            <p className="flex items-center gap-2 text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              <QrCode className="h-3.5 w-3.5" aria-hidden />
-              Einladung · Link & QR
-            </p>
-
-            <div className="flex justify-center rounded-2xl bg-white p-4">
-              {inviteQr ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={inviteQr}
-                  alt="QR-Code zur Schrauber-Einladung"
-                  width={220}
-                  height={220}
-                  className="h-auto w-[min(70vw,220px)]"
-                />
-              ) : (
-                <div className="flex h-[220px] w-[220px] items-center justify-center text-[0.8rem] text-[color:var(--vd-muted)]">
-                  QR wird erzeugt…
-                </div>
-              )}
-            </div>
-
-            <p className="break-all font-mono text-[0.78rem] text-[color:var(--vd-text)]">
-              {inviteUrl}
-            </p>
-
-            <div className="flex flex-wrap gap-2">
-              <PressableButton
-                type="button"
-                variant="button"
-                className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.8rem] font-medium text-[color:var(--vd-text)]"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(inviteUrl);
-                    setCopied(true);
-                  } catch {
-                    setMessage(
-                      "Kopieren fehlgeschlagen — Link manuell markieren.",
-                    );
-                  }
-                }}
-              >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5" aria-hidden />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" aria-hidden />
-                )}
-                {copied ? "Kopiert" : "Link kopieren"}
-              </PressableButton>
-
-              {inviteQr ? (
-                <a
-                  href={inviteQr}
-                  download={`zeloxtag-schrauber-${tagUuid.slice(0, 8)}.png`}
-                  className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.8rem] font-medium text-[color:var(--vd-text)]"
-                >
-                  <Download className="h-3.5 w-3.5" aria-hidden />
-                  QR speichern
-                </a>
-              ) : null}
-            </div>
-
-            <p className="flex items-start gap-2 text-[0.75rem] leading-relaxed text-[color:var(--vd-muted)]">
-              <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              Werkstatt scannt den QR oder öffnet den Link, gibt die E-Mail ein
-              und tippt den Anmelde-Link — danach kann sie sofort Belege
-              eintragen.
-            </p>
-          </div>
-        ) : null}
-
         {message ? (
-          <p className="mt-3 text-[0.85rem] text-red-700" role="alert">
+          <p className="px-4 text-[13px] text-[#FF453A]" role="alert">
             {message}
           </p>
         ) : null}
-      </section>
+      </div>
 
-      <section className="zt-feature-panel p-5 shadow-[var(--vd-shadow-sm)]">
-        <h2 className="font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tracking-[-0.03em] text-[color:var(--vd-text)]">
+      {inviteUrl ? (
+        <InviteShareCard
+          inviteUrl={inviteUrl}
+          inviteQr={inviteQr}
+          copied={copied}
+          fileName={`zeloxtag-schrauber-${tagUuid.slice(0, 8)}.png`}
+          onCopy={() => void handleCopyInvite()}
+        />
+      ) : null}
+
+      <section aria-labelledby="schrauber-active-heading">
+        <h2 id="schrauber-active-heading" className={IOS_SECTION_HEADER}>
           Aktive Zugänge
         </h2>
-        {rows.length === 0 ? (
-          <p className="mt-3 text-[0.88rem] text-[color:var(--vd-muted)]">
-            Noch keine Schrauber eingeladen.
-          </p>
-        ) : (
-          <ul className="mt-4 space-y-3">
-            {rows.map((row) => (
-              <li
+        <div className="flex flex-col gap-3">
+          {rows.length === 0 ? (
+            <IOSEmptyState icon={UserRound}>
+              Noch keine Schrauber eingeladen.
+            </IOSEmptyState>
+          ) : (
+            rows.map((row) => (
+              <ContributorCard
                 key={row.id}
-                className="space-y-3 rounded-2xl border border-[color:var(--vd-border)] bg-[color:var(--vd-bg)] px-3 py-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[0.92rem] font-medium text-[color:var(--vd-text)]">
-                      {row.label || row.userEmail || "Schrauber"}
-                    </p>
-                    <p className="mt-0.5 text-[0.78rem] text-[color:var(--vd-muted)]">
-                      {row.status === "invited"
-                        ? "Einladung offen"
-                        : row.userEmail || "Aktiv"}
-                      {row.expiresAt && row.status === "invited"
-                        ? ` · gültig bis ${formatDocumentDate(row.expiresAt.slice(0, 10))}`
-                        : ""}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {row.status === "invited" && row.inviteToken ? (
-                      <PressableButton
-                        type="button"
-                        variant="button"
-                        aria-label="Einladungs-QR anzeigen"
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[color:var(--vd-border)] text-[color:var(--vd-muted)]"
-                        onClick={() => {
-                          setMessage(null);
-                          setCopied(false);
-                          setInviteUrl(
-                            absoluteInvite(`/einladung/${row.inviteToken}`),
-                          );
-                        }}
-                      >
-                        <QrCode className="h-4 w-4" aria-hidden />
-                      </PressableButton>
-                    ) : null}
-                    <PressableButton
-                      type="button"
-                      variant="button"
-                      disabled={pending}
-                      aria-label="Zugang widerrufen"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[color:var(--vd-border)] text-[color:var(--vd-muted)]"
-                      onClick={() => {
-                        startTransition(async () => {
-                          const result = await revokeSchrauberInvite(
-                            vehicleId,
-                            row.id,
-                          );
-                          if (result.status === "ok" && result.contributors) {
-                            setRows(result.contributors);
-                          } else if (result.status === "error") {
-                            setMessage(result.message);
-                          }
-                          void tagUuid;
-                        });
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </PressableButton>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 border-t border-[color:var(--vd-border)] pt-3">
-                  <label
-                    htmlFor={`read-history-${row.id}`}
-                    className="min-w-0 text-[0.8rem] leading-snug text-[color:var(--vd-muted)]"
-                  >
-                    {row.canReadHistory
-                      ? "Sieht alte Rechnungen & Historie"
-                      : "Nur neue Rechnungen einscannen"}
-                  </label>
-                  <HistoryAccessToggle
-                    id={`read-history-${row.id}`}
-                    checked={row.canReadHistory}
-                    disabled={pending}
-                    onChange={(next) => {
-                      setMessage(null);
-                      setRows((current) =>
-                        current.map((item) =>
-                          item.id === row.id
-                            ? { ...item, canReadHistory: next }
-                            : item,
-                        ),
-                      );
-                      startTransition(async () => {
-                        const result = await setSchrauberReadHistory(
-                          vehicleId,
-                          row.id,
-                          next,
-                        );
-                        if (result.status === "ok" && result.contributors) {
-                          setRows(result.contributors);
-                        } else if (result.status === "error") {
-                          setMessage(result.message);
-                          const listed = await listVehicleContributors(vehicleId);
-                          if (listed.status === "ok" && listed.contributors) {
-                            setRows(listed.contributors);
-                          }
-                        }
-                      });
-                    }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+                row={row}
+                pending={pending}
+                onShowQr={
+                  row.status === "invited" && row.inviteToken
+                    ? () => handleShowQr(row)
+                    : undefined
+                }
+                onRevoke={() => handleRevoke(row)}
+                onReadHistoryChange={(next) =>
+                  handleReadHistoryChange(row, next)
+                }
+              />
+            ))
+          )}
+        </div>
       </section>
-    </div>
+    </>
   );
 }

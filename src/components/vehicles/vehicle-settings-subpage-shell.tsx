@@ -18,6 +18,8 @@ type VehicleSettingsSubpageShellProps = {
   /** OLED discover / swipe — dark header tokens on black. */
   theme?: "default" | "discover";
   children: ReactNode;
+  /** Portaled FAB / bottom chrome (rendered outside the scroll column). */
+  fixedAction?: ReactNode;
 };
 
 export function VehicleSettingsSubpageShell({
@@ -31,6 +33,7 @@ export function VehicleSettingsSubpageShell({
   backLabel = "Showcase",
   theme = "default",
   children,
+  fixedAction,
 }: VehicleSettingsSubpageShellProps) {
   const resolvedBackHref =
     backHref ??
@@ -42,7 +45,7 @@ export function VehicleSettingsSubpageShell({
     <div className="ios-settings-surface min-h-dvh w-full bg-[#000000]">
       <section
         className={cn(
-          "mx-auto flex w-full max-w-lg flex-col px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
+          "mx-auto flex w-full max-w-lg flex-col px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
           theme === "discover" ? "dark gap-4" : "gap-5",
         )}
       >
@@ -56,6 +59,7 @@ export function VehicleSettingsSubpageShell({
         />
         {children}
       </section>
+      {fixedAction}
     </div>
   );
 }

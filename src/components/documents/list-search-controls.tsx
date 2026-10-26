@@ -1,13 +1,6 @@
 "use client";
 
-import { Search, X } from "lucide-react";
-
-import {
-  automotiveFilterChipActiveClassName,
-  automotiveFilterChipInactiveClassName,
-} from "@/components/ui/automotive";
-import { GarageField, GarageInsetInput } from "@/components/ui/garage-field";
-import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
+import { IOSFilterChips, IOSSearchField } from "@/components/ui/ios";
 import type { ListFilterChip } from "@/lib/documents/list-search";
 
 export type ListSearchControlsProps = {
@@ -26,59 +19,13 @@ export type ListSearchControlsProps = {
   className?: string;
 };
 
-function ChipRow({
-  chips,
-  activeChipId,
-  onChipChange,
-  ariaLabel,
-}: {
-  chips: ListFilterChip[];
-  activeChipId?: string;
-  onChipChange: (chipId: string) => void;
-  ariaLabel: string;
-}) {
-  return (
-    <div
-      role="toolbar"
-      aria-label={ariaLabel}
-      className="flex gap-2 overflow-x-auto pb-0.5"
-    >
-      {chips.map((chip) => {
-        const active = activeChipId === chip.id;
-        return (
-          <PressableButton
-            key={chip.id}
-            type="button"
-            variant="button"
-            title={chip.title ?? chip.label}
-            onClick={() => onChipChange(chip.id)}
-            className={
-              active
-                ? automotiveFilterChipActiveClassName
-                : automotiveFilterChipInactiveClassName
-            }
-          >
-            {chip.label}
-            {typeof chip.count === "number" ? (
-              <span className={active ? "text-white/70" : "text-[color:var(--vd-muted)]"}>
-                {" "}
-                · {chip.count}
-              </span>
-            ) : null}
-          </PressableButton>
-        );
-      })}
-    </div>
-  );
-}
-
 /**
  * Search field + optional filter chips for document / Umbau lists.
  */
 export function ListSearchControls({
   query,
   onQueryChange,
-  placeholder = "Suchen…",
+  placeholder = "Suchen",
   chips,
   activeChipId,
   onChipChange,
@@ -89,58 +36,33 @@ export function ListSearchControls({
   className = "",
 }: ListSearchControlsProps) {
   return (
-    <div className={["space-y-2.5", className].filter(Boolean).join(" ")}>
-      <GarageField label="Suchen" htmlFor="list-search-query">
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 z-[1] h-4 w-4 -translate-y-1/2 text-[color:var(--vd-muted)]"
-            aria-hidden
-          />
-          <GarageInsetInput
-            id="list-search-query"
-            type="search"
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder={placeholder}
-            autoComplete="off"
-            enterKeyHint="search"
-            className="garage-field__control--search"
-          />
-          {query ? (
-            <button
-              type="button"
-              aria-label="Suche leeren"
-              onClick={() => onQueryChange("")}
-              className="absolute right-1 top-1/2 z-[1] inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[color:var(--vd-muted)]"
-            >
-              <X className="h-4 w-4" aria-hidden />
-            </button>
-          ) : null}
-        </div>
-      </GarageField>
+    <div className={["space-y-3", className].filter(Boolean).join(" ")}>
+      <IOSSearchField
+        value={query}
+        onChange={onQueryChange}
+        placeholder={placeholder}
+      />
 
       {chips && chips.length > 0 && onChipChange ? (
-        <ChipRow
+        <IOSFilterChips
           chips={chips}
-          activeChipId={activeChipId}
-          onChipChange={onChipChange}
+          activeId={activeChipId}
+          onChange={onChipChange}
           ariaLabel="Filter"
         />
       ) : null}
 
       {secondaryChips && secondaryChips.length > 0 && onSecondaryChipChange ? (
-        <ChipRow
+        <IOSFilterChips
           chips={secondaryChips}
-          activeChipId={secondaryActiveChipId}
-          onChipChange={onSecondaryChipChange}
+          activeId={secondaryActiveChipId}
+          onChange={onSecondaryChipChange}
           ariaLabel="Kategorie"
         />
       ) : null}
 
       {resultLabel ? (
-        <p className="px-0.5 text-[0.72rem] text-[color:var(--vd-muted)]">
-          {resultLabel}
-        </p>
+        <p className="px-4 text-xs tabular-nums text-[#8E8E93]">{resultLabel}</p>
       ) : null}
     </div>
   );

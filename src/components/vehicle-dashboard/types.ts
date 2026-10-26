@@ -65,8 +65,6 @@ export interface DashboardTileConfig {
   meta?: DashboardTileMeta;
   /** Span full width on mobile grid */
   featured?: boolean;
-  /** Emphasis ring on the primary 6-tile menu (e.g. ABE & Gutachten). */
-  menuHighlight?: boolean;
   /** Pro-gated: tile leads to checkout instead of the feature. */
   locked?: boolean;
 }
@@ -102,18 +100,8 @@ export interface VehicleDashboardData {
   tiles?: DashboardTileConfig[];
 }
 
-export type DashboardQuickAccessItem = {
-  id: string;
-  label: string;
-  href: string;
-  icon: DashboardIconName;
-  iconOnly?: boolean;
-};
-
 export interface VehicleDashboardProps {
   data: VehicleDashboardData;
-  /** Shortcuts below the vehicle hero (Tanken, Historie, Kosten). */
-  quickAccessItems?: DashboardQuickAccessItem[];
   timelineEvents?: TimelineEvent[];
   documents?: Document[];
   resolveDocumentHref?: (documentId: string) => string;

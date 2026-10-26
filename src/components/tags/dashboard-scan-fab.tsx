@@ -1,20 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { createPortal } from "react-dom";
 import { Fuel, PenLine, Plus, Receipt } from "lucide-react";
 
 import { DashboardQuickActionSheet } from "@/components/tags/dashboard-quick-action-sheet";
-import { FIXED_BOTTOM_ACTION_Z } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
+import { SCAN_FAB_Z } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
-import {
-  isPaywallOpen,
-  subscribePaywallOpen,
-} from "@/lib/billing/paywall-open-state";
-import {
-  getDashboardPromptSnapshot,
-  subscribeDashboardPrompts,
-} from "@/lib/ui/dashboard-prompt-orchestrator";
+import { useNativeBottomChromeOffsetClass } from "@/lib/navigation/use-native-bottom-chrome-offset";
 import { cn } from "@/lib/utils";
 
 /** On section pages, Plus runs one action; on the dashboard it opens the sheet. */
@@ -49,6 +48,18 @@ export interface DashboardScanCtaProps {
   hideFuelAction?: boolean;
   manualActionLabel?: string;
   manualActionDescription?: string;
+}
+
+function subscribeClientNoop() {
+  return () => undefined;
+}
+
+function getClientSnapshot() {
+  return true;
+}
+
+function getServerSnapshot() {
+  return false;
 }
 
 const scanFabClassName = (
@@ -87,33 +98,15 @@ export function DashboardScanFab({
   manualActionLabel = "Manueller Eintrag",
   manualActionDescription = "Ohne Scan — Umbau, Service, Notiz",
 }: DashboardScanCtaProps) {
-  const [mounted, setMounted] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [paywallOpen, setPaywallOpenState] = useState(false);
-  const [promptPhase, setPromptPhase] = useState(
-    () => getDashboardPromptSnapshot().phase,
+  const bottomOffsetClass = useNativeBottomChromeOffsetClass();
+  const isClient = useSyncExternalStore(
+    subscribeClientNoop,
+    getClientSnapshot,
+    getServerSnapshot,
   );
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const href = scanHref ?? `/v/${tagUuid}?scan=1`;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    setPaywallOpenState(isPaywallOpen());
-    return subscribePaywallOpen(() => {
-      setPaywallOpenState(isPaywallOpen());
-    });
-  }, []);
-
-  useEffect(() => {
-    const syncPhase = () => {
-      setPromptPhase(getDashboardPromptSnapshot().phase);
-    };
-    syncPhase();
-    return subscribeDashboardPrompts(syncPhase);
-  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -123,9 +116,6 @@ export function DashboardScanFab({
       document.body.style.overflow = previousOverflow;
     };
   }, [menuOpen]);
-
-  const blockedByPrompt =
-    promptPhase === "silhouette" || promptPhase === "tour";
 
   const runFuelAction = useCallback(() => {
     if (fuelScanLocked) {
@@ -235,9 +225,11 @@ export function DashboardScanFab({
           ? "Schnellaktionen schließen"
           : "Schnellaktionen";
 
-  if (!mounted || paywallOpen || hidden || blockedByPrompt) {
+  if (!isClient || hidden) {
     return null;
   }
+
+  const portalTarget = document.body;
 
   return createPortal(
     <>
@@ -252,13 +244,19 @@ export function DashboardScanFab({
 
       <div
         className={cn(
-          "pointer-events-none fixed inset-x-0 bottom-0",
-          FIXED_BOTTOM_ACTION_Z,
+          "dark pointer-events-none fixed inset-x-0",
+          bottomOffsetClass,
+          SCAN_FAB_Z,
         )}
         data-tour="scan-fab-shell"
       >
         <div
-          className="pointer-events-auto absolute right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] sm:right-5"
+          className={cn(
+            "pointer-events-auto absolute right-4 sm:right-5",
+            bottomOffsetClass === "bottom-0"
+              ? "bottom-[max(1rem,env(safe-area-inset-bottom))]"
+              : "bottom-4",
+          )}
         >
           <PressableButton
             type="button"
@@ -281,6 +279,6 @@ export function DashboardScanFab({
         </div>
       </div>
     </>,
-    document.body,
+    portalTarget,
   );
 }

@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { SCAN_FAB_Z } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
 import { cn } from "@/lib/utils";
 
 const SHEET_EASE = [0.22, 1, 0.36, 1] as const;
@@ -49,7 +50,10 @@ export function DashboardQuickActionSheet({
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="pointer-events-auto fixed inset-0 z-[108] flex items-end justify-center bg-black/55 backdrop-blur-sm"
+          className={cn(
+            "dark pointer-events-auto fixed inset-0 flex items-end justify-center bg-black/55 backdrop-blur-sm",
+            SCAN_FAB_Z,
+          )}
           role="dialog"
           aria-modal="true"
           aria-label={title}

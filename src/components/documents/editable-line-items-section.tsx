@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
@@ -38,6 +38,10 @@ type EditableLineItemsSectionProps = {
   sectionId?: string;
   /** Optional outer card (e.g. zt-feature-panel on Beleg-Detail). */
   shellClassName?: string;
+  /** Hide built-in „Positionen“ heading (e.g. iOS InsetGroupedCard header). */
+  hideHeading?: boolean;
+  /** Custom read-only presentation; the built-in editor is still used while editing. */
+  renderReadView?: (items: DocumentLineItem[]) => ReactNode;
 };
 
 type DraftItem = {
@@ -97,6 +101,8 @@ export function EditableLineItemsSection({
   onEditRequestConsumed,
   sectionId,
   shellClassName,
+  hideHeading = false,
+  renderReadView,
 }: EditableLineItemsSectionProps) {
   const inline = mode === "inline";
   const [editing, setEditing] = useState(inline);
@@ -188,8 +194,17 @@ export function EditableLineItemsSection({
     return null;
   }
 
+  if (renderReadView && !editing && !inline) {
+    return (
+      <div id={sectionId} className="scroll-mt-24">
+        {renderReadView(displayItems)}
+      </div>
+    );
+  }
+
   const content = (
     <div className="space-y-3">
+      {hideHeading ? null : (
       <div className="flex items-center justify-between gap-3 px-0.5">
         <h2 className={SECTION_HEADING_CLASS}>Positionen</h2>
         {!editing && !inline && !hideEditTrigger ? (
@@ -204,6 +219,7 @@ export function EditableLineItemsSection({
           </PressableButton>
         ) : null}
       </div>
+      )}
 
       {editing ? (
         <div className="space-y-3">

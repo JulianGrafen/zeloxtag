@@ -4,7 +4,6 @@ export {
   automotiveCardInteractiveClassName,
   automotiveMenuTileClassName as dashboardMenuCardClassName,
   automotiveMenuTileCompactClassName as dashboardMenuCardCompactClassName,
-  automotiveMenuTileHighlightClassName as dashboardMenuTileHighlightClassName,
   automotiveMenuTileCompactTitleClassName as dashboardMenuCardCompactTitleClassName,
   automotiveMenuTileCompactMetaClassName as dashboardMenuCardCompactMetaClassName,
   automotiveCardTitleClassName as dashboardMenuCardTitleClassName,

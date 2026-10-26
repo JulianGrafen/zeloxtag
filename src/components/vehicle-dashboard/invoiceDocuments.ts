@@ -30,14 +30,7 @@ export interface InvoiceDocument {
   scannedAt: string;
 }
 
-function formatEur(value: number): string {
-  return value.toLocaleString("de-DE", {
-    style: "currency",
-    currency: "EUR",
-  });
-}
-
-export { formatEur };
+export { formatCurrencyEUR as formatEur } from "@/utils/formatters";
 
 export const INVOICE_DOCUMENTS: InvoiceDocument[] = [
   {

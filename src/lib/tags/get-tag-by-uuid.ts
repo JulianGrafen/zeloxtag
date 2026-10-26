@@ -70,7 +70,10 @@ function normalizeDocument(
     user_id: typeof doc.user_id === "string" ? doc.user_id : "",
     created_by: typeof doc.created_by === "string" ? doc.created_by : null,
     vendor: typeof doc.vendor === "string" ? doc.vendor : null,
-    category: typeof doc.category === "string" ? doc.category : null,
+    category:
+      typeof doc.category === "string" && doc.category.trim()
+        ? doc.category.trim()
+        : null,
     line_items: parseLineItems(doc.line_items),
     kba_number:
       parseAbeFields && typeof doc.kba_number === "string"

@@ -14,17 +14,28 @@ function isTuningLikeCategory(category: string | null | undefined): boolean {
   return /tuning|umbau/.test(raw);
 }
 
+/** Stored image on Storage (not placeholder `manual://` / `mock://`). */
+export function hasStoredModificationImage(
+  doc: Pick<Document, "file_url">,
+): boolean {
+  const fileUrl = doc.file_url?.trim() ?? "";
+  if (
+    !fileUrl ||
+    fileUrl.startsWith("manual://") ||
+    fileUrl.startsWith("mock://")
+  ) {
+    return false;
+  }
+  return documentMediaKind(fileUrl) === "image";
+}
+
 /** Matches `list_public_build_story` document filters (image manual umbauten). */
 export function isBuildStoryEligibleDocument(
   doc: BuildStoryDocShape,
 ): boolean {
   if (!isManualEntryMarker(doc.invoice_number)) return false;
   if (!isTuningLikeCategory(doc.category)) return false;
-  const fileUrl = doc.file_url?.trim() ?? "";
-  if (!fileUrl || fileUrl.startsWith("manual://") || fileUrl.startsWith("mock://")) {
-    return false;
-  }
-  return documentMediaKind(fileUrl) === "image";
+  return hasStoredModificationImage(doc);
 }
 
 export function isPublicBuildStoryDocument(doc: BuildStoryDocShape): boolean {

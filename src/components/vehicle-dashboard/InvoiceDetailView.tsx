@@ -1,193 +1,124 @@
 "use client";
 
-import {
-  ArrowLeft,
-  CheckCircle2,
-  Download,
-  Share2,
-} from "lucide-react";
+import { Car, CheckCircle2, ChevronLeft, CreditCard } from "lucide-react";
 
 import {
-  DocumentDetailHero,
-  DocumentDetailHeroAmount,
-  DocumentDetailHeroChip,
-} from "@/components/documents/document-detail-hero";
+  ReceiptActionBar,
+  ReceiptHero,
+  ReceiptLineItemsCard,
+  ReceiptMetadataCard,
+} from "@/components/documents/receipt";
 import {
-  AutomotiveSectionLabel,
-  automotiveSpecCellClassName,
-  automotiveSpecLabelClassName,
-  automotiveSpecValueClassName,
-} from "@/components/ui/automotive";
-import {
-  formatEur,
-  type InvoiceDocument,
-} from "./invoiceDocuments";
-import { PressableButton, PressableLink } from "./Pressable";
+  IOS_PILL,
+  IOSScreen,
+  InsetGroupedCard,
+  InsetListRow,
+} from "@/components/ui/ios";
+import { cn } from "@/lib/utils";
+import { restoreGermanUmlauts } from "@/utils/formatters";
+
+import { type InvoiceDocument } from "./invoiceDocuments";
+import { PressableLink } from "./Pressable";
 
 interface InvoiceDetailViewProps {
   document: InvoiceDocument;
   vehicleModel: string;
 }
 
+async function shareCurrentPage(title: string): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title, url: window.location.href });
+      return;
+    }
+    await navigator.clipboard?.writeText(window.location.href);
+  } catch {
+    // User cancelled share sheet — ignore.
+  }
+}
+
+/** Demo receipt (`/rechnungen/[id]`) — same Wallet layout as the live Beleg-Detail. */
 export function InvoiceDetailView({
   document,
   vehicleModel,
 }: InvoiceDetailViewProps) {
   return (
-    <div className="vd-root relative min-h-dvh overflow-x-hidden">
-      <div
-        aria-hidden
-        className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
-      />
-
-      <div className="vd-anim-stack relative z-10 mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-        <PressableLink href="/rechnungen" variant="pill" className="vd-back-pill">
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Zurück zur Liste
+    <IOSScreen>
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pb-32 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5">
+        <PressableLink
+          href="/rechnungen"
+          variant="pill"
+          className="-ml-1 inline-flex w-fit items-center gap-0.5 py-1 text-[17px] text-[#0A84FF]"
+        >
+          <ChevronLeft className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+          Belege
         </PressableLink>
 
-        <DocumentDetailHero
+        <ReceiptHero
           title={document.title}
-          subtitle={document.vendor}
-          trailing={
-            <DocumentDetailHeroAmount>
-              {formatEur(document.amount)}
-            </DocumentDetailHeroAmount>
-          }
-          chips={
-            <DocumentDetailHeroChip className="bg-emerald-500/10 text-emerald-700">
+          amount={document.amount}
+          categoryLabel={document.category}
+          vendor={document.vendor}
+          dateLabel={document.issuedAt}
+          status={
+            <span className={cn(IOS_PILL, "bg-emerald-500/15 text-emerald-400")}>
               <CheckCircle2 className="h-3 w-3" aria-hidden />
               {document.status}
-            </DocumentDetailHeroChip>
+            </span>
           }
         />
 
-        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
-          <AutomotiveSectionLabel className="mb-3">Belegdaten</AutomotiveSectionLabel>
-          <dl className="grid grid-cols-2 gap-3 text-[0.85rem]">
-            <div className={automotiveSpecCellClassName}>
-              <dt className={automotiveSpecLabelClassName}>Nummer</dt>
-              <dd className={automotiveSpecValueClassName}>
-                {document.invoiceNumber}
-              </dd>
-            </div>
-            <div className={automotiveSpecCellClassName}>
-              <dt className={automotiveSpecLabelClassName}>Zahlung</dt>
-              <dd className={automotiveSpecValueClassName}>
-                {document.paymentMethod}
-              </dd>
-            </div>
-            <div className={automotiveSpecCellClassName}>
-              <dt className={automotiveSpecLabelClassName}>Fahrzeug</dt>
-              <dd className={automotiveSpecValueClassName}>{vehicleModel}</dd>
-            </div>
-            <div className={automotiveSpecCellClassName}>
-              <dt className={automotiveSpecLabelClassName}>km-Stand</dt>
-              <dd className={automotiveSpecValueClassName}>
-                {document.mileageKm
-                  ? `${document.mileageKm.toLocaleString("de-DE")} km`
-                  : "—"}
-              </dd>
-            </div>
-          </dl>
-          <p className="mt-3 text-[0.82rem] leading-relaxed text-zinc-400">
-            {document.notes}
-          </p>
-        </section>
+        <ReceiptMetadataCard
+          metadata={{
+            vendor: document.vendor,
+            category: document.category,
+            mileageKm: document.mileageKm ?? null,
+            invoiceNumber: document.invoiceNumber,
+          }}
+          extraRows={
+            <>
+              <InsetListRow
+                icon={CreditCard}
+                iconTone="amber"
+                label="Zahlung"
+                value={document.paymentMethod}
+              />
+              <InsetListRow
+                icon={Car}
+                iconTone="neutral"
+                label="Fahrzeug"
+                value={vehicleModel}
+              />
+            </>
+          }
+        />
 
-        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
-          <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Positionen
-          </h2>
-          <ul className="space-y-2.5">
-            {document.lineItems.map((item) => (
-              <li
-                key={item.label}
-                className="flex items-start justify-between gap-3 text-[0.88rem]"
-              >
-                <span className="text-[color:var(--vd-text)]">{item.label}</span>
-                <span className="shrink-0 font-semibold tabular-nums text-[color:var(--vd-text)]">
-                  {formatEur(item.amount)}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 flex items-center justify-between border-t border-[color:var(--vd-border)] pt-3">
-            <span className="text-[0.85rem] font-medium text-[color:var(--vd-muted)]">
-              Gesamt
-            </span>
-            <span className="text-[1.05rem] font-bold tracking-[-0.02em] text-[color:var(--vd-text)]">
-              {formatEur(document.amount)}
-            </span>
-          </div>
-        </section>
+        <ReceiptLineItemsCard items={document.lineItems} total={document.amount} />
 
-        <section className="zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
-          <div className="flex items-center justify-between border-b border-[color:var(--vd-border)] bg-neutral-100 px-4 py-2.5">
-            <div className="min-w-0">
-              <p className="truncate text-[0.75rem] font-medium text-[color:var(--vd-text)]">
-                {document.fileName}
-              </p>
-              <p className="text-[0.68rem] text-[color:var(--vd-muted)]">
-                {document.fileSize} · gescannt {document.scannedAt}
-              </p>
-            </div>
-          </div>
+        {document.notes ? (
+          <InsetGroupedCard header="Notizen">
+            <p className="px-4 py-3 text-[15px] leading-snug text-white">
+              {restoreGermanUmlauts(document.notes)}
+            </p>
+          </InsetGroupedCard>
+        ) : null}
 
-          <div className="space-y-4 p-5 font-[family-name:var(--font-display)]">
-            <div className="space-y-1 border-b border-neutral-200 pb-4">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                Rechnung
-              </p>
-              <p className="text-[1.1rem] font-bold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                {document.vendor}
-              </p>
-              <p className="text-[0.8rem] text-neutral-500">
-                {document.invoiceNumber} · {document.issuedAt}
-              </p>
-            </div>
-
-            <div className="space-y-2 text-[0.82rem]">
-              {document.lineItems.slice(0, 4).map((item) => (
-                <div key={item.label} className="flex justify-between gap-3">
-                  <span className="text-neutral-600">{item.label}</span>
-                  <span className="font-medium tabular-nums text-neutral-900">
-                    {formatEur(item.amount)}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-between border-t border-neutral-200 pt-3 text-[0.95rem] font-bold">
-              <span>Betrag</span>
-              <span>{formatEur(document.amount)}</span>
-            </div>
-
-            <div className="space-y-2 pt-1">
-              <div className="h-2 rounded bg-neutral-100" />
-              <div className="h-2 w-4/5 rounded bg-neutral-100" />
-              <div className="h-2 w-3/5 rounded bg-neutral-100" />
-            </div>
-          </div>
-        </section>
-
-        <div className="grid grid-cols-2 gap-3">
-          <PressableButton
-            variant="button"
-            className="inline-flex items-center justify-center gap-2 zt-feature-panel px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-          >
-            <Share2 className="h-4 w-4" aria-hidden />
-            Teilen
-          </PressableButton>
-          <PressableButton
-            variant="button"
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3.5 text-[0.88rem] font-semibold text-white shadow-[var(--vd-shadow-sm)]"
-          >
-            <Download className="h-4 w-4" aria-hidden />
-            PDF öffnen
-          </PressableButton>
-        </div>
+        <InsetGroupedCard header="Original">
+          <InsetListRow
+            label={document.fileName}
+            sublabel={`${document.fileSize} · gescannt ${document.scannedAt}`}
+            emphasis="navigation"
+          />
+        </InsetGroupedCard>
       </div>
-    </div>
+
+      <ReceiptActionBar
+        onShare={() => {
+          void shareCurrentPage(document.title);
+        }}
+        onEdit={() => {}}
+      />
+    </IOSScreen>
   );
 }

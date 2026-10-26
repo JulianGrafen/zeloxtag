@@ -20,6 +20,10 @@ import {
   documentDetailMetadataRowClassName,
   documentDetailMetadataValueClassName,
 } from "@/components/documents/document-detail-metadata-styles";
+import {
+  EditableInsetRowShell,
+  type EditableSectionLayout,
+} from "@/components/documents/editable-inset-row-shell";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +41,7 @@ type EditableInvoiceCategorySectionProps = {
   onEditRequestConsumed?: () => void;
   sectionId?: string;
   embedded?: boolean;
+  layout?: EditableSectionLayout;
 };
 
 export function EditableInvoiceCategorySection({
@@ -51,6 +56,7 @@ export function EditableInvoiceCategorySection({
   onEditRequestConsumed,
   sectionId,
   embedded = false,
+  layout = "default",
 }: EditableInvoiceCategorySectionProps) {
   const router = useRouter();
   const storedCategory = category?.trim() || null;
@@ -109,6 +115,31 @@ export function EditableInvoiceCategorySection({
   }
 
   const displayLabel = displayInvoiceReviewCategoryLabel(displayCategory);
+
+  if (layout === "inset-row") {
+    return (
+      <EditableInsetRowShell
+        sectionId={sectionId}
+        label="Kategorie"
+        icon={Tag}
+        iconTone="purple"
+        value={displayLabel}
+        editing={editing}
+        pending={pending}
+        error={error}
+        onEdit={hideEditTrigger ? undefined : () => setEditing(true)}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        editor={
+          <InvoiceCategoryChips
+            value={draft}
+            onChange={setDraft}
+            disabled={pending}
+          />
+        }
+      />
+    );
+  }
 
   return (
     <div

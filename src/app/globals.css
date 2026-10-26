@@ -449,25 +449,6 @@ nextjs-portal {
   box-shadow: 0 0 28px rgba(255, 255, 255, 0.07);
 }
 
-.vd-automotive-card-surface--highlight {
-  background:
-    linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--vd-automotive-tile-fill) 94%, transparent),
-      var(--vd-automotive-tile-fill)
-    )
-    padding-box,
-    linear-gradient(
-      to bottom,
-      rgba(251, 191, 36, 0.32),
-      rgba(251, 191, 36, 0.1)
-    )
-    border-box;
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.28),
-    inset 0 0 0 1px rgba(251, 191, 36, 0.14);
-}
-
 /* Light dashboard: slightly brighter frost, same specular edge */
 :root:not(.dark) .vd-automotive-card-surface {
   --vd-automotive-tile-fill: rgba(255, 255, 255, 0.72);
@@ -1584,6 +1565,15 @@ a.claim-cta.vd-scan-fab-cta,
   padding: 0;
   border-radius: 9999px;
   flex-shrink: 0;
+}
+
+.claim-cta.vd-scan-fab-cta:not(.vd-scan-fab-cta--locked),
+button.claim-cta.vd-scan-fab-cta:not(.vd-scan-fab-cta--locked),
+.zt-cta-primary.vd-scan-fab-cta:not(.vd-scan-fab-cta--locked) {
+  border: 1px solid rgb(255 255 255 / 0.45);
+  background: linear-gradient(to bottom, rgb(244 244 245), rgb(212 212 216));
+  color: rgb(9 9 11);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
 }
 
 .dark .zt-cta-primary.vd-scan-fab-cta {

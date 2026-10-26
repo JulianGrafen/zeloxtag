@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, Receipt } from "lucide-react";
+import { Receipt } from "lucide-react";
 
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import {
@@ -9,8 +9,8 @@ import {
   AutomotiveList,
   AutomotiveListRow,
   AutomotiveSectionLabel,
-  AutomotiveSummaryPanel,
 } from "@/components/ui/automotive";
+import { IOSListPage } from "@/components/ui/ios";
 import { collectFilterValues, matchesSearchQuery } from "@/lib/documents/list-search";
 
 import {
@@ -19,7 +19,6 @@ import {
   INVOICE_DOCUMENTS,
   type InvoiceDocument,
 } from "./invoiceDocuments";
-import { PressableLink } from "./Pressable";
 
 interface InvoicesViewProps {
   vehicleModel: string;
@@ -68,63 +67,44 @@ export function InvoicesView({
       : `${visible.length} von ${documents.length} Belegen`;
 
   return (
-    <div className="vd-root relative min-h-dvh overflow-x-hidden">
-      <div
-        aria-hidden
-        className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
+    <IOSListPage
+      title="Rechnungen & Belege"
+      subtitle={`Summe ${formatEur(total)}`}
+      backHref={backHref}
+    >
+      <ListSearchControls
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Werkstatt, Titel, Kategorie"
+        chips={categoryChips}
+        activeChipId={categoryId}
+        onChipChange={setCategoryId}
+        resultLabel={resultLabel}
       />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-10 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-        <header className="vd-anim-header space-y-4">
-          <PressableLink
-            href={backHref}
-            variant="pill"
-            className="vd-back-pill"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Zurück
-          </PressableLink>
+      <section aria-label="Rechnungen">
+        <AutomotiveSectionLabel>{vehicleModel}</AutomotiveSectionLabel>
 
-          <AutomotiveSummaryPanel
-            title="Rechnungen & Belege"
-            metric={`Summe ${formatEur(total)}`}
-          />
-        </header>
-
-        <ListSearchControls
-          query={query}
-          onQueryChange={setQuery}
-          placeholder="Werkstatt, Titel, Kategorie…"
-          chips={categoryChips}
-          activeChipId={categoryId}
-          onChipChange={setCategoryId}
-          resultLabel={resultLabel}
-        />
-
-        <section aria-label="Rechnungen" className="space-y-2">
-          <AutomotiveSectionLabel>Belegliste</AutomotiveSectionLabel>
-
-          {visible.length === 0 ? (
-            <AutomotiveEmptyPanel>
-              Keine Treffer für diese Suche / Filter.
-            </AutomotiveEmptyPanel>
-          ) : (
-            <AutomotiveList aria-label="Belegliste">
-              {visible.map((doc, index) => (
-                <AutomotiveListRow
-                  key={doc.id}
-                  href={`/rechnungen/${doc.id}`}
-                  icon={Receipt}
-                  title={doc.title}
-                  amount={formatEur(doc.amount)}
-                  meta={`${doc.vendor} · ${doc.issuedAt} · ${doc.category}`}
-                  showDivider={index < visible.length - 1}
-                />
-              ))}
-            </AutomotiveList>
-          )}
-        </section>
-      </div>
-    </div>
+        {visible.length === 0 ? (
+          <AutomotiveEmptyPanel>
+            Keine Treffer für diese Suche / Filter.
+          </AutomotiveEmptyPanel>
+        ) : (
+          <AutomotiveList aria-label="Belegliste">
+            {visible.map((doc) => (
+              <AutomotiveListRow
+                key={doc.id}
+                href={`/rechnungen/${doc.id}`}
+                icon={Receipt}
+                iconTone="blue"
+                title={doc.title}
+                amount={formatEur(doc.amount)}
+                meta={`${doc.vendor} · ${doc.issuedAt} · ${doc.category}`}
+              />
+            ))}
+          </AutomotiveList>
+        )}
+      </section>
+    </IOSListPage>
   );
 }

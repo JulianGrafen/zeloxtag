@@ -1,6 +1,11 @@
 "use client";
 
-import { IOSListItem } from "@/components/ui/ios";
+import {
+  IOS_ROW_SEPARATOR,
+  IOS_ROW_SEPARATOR_INSET_TEXT,
+  IOSListItem,
+} from "@/components/ui/ios";
+import { cn } from "@/lib/utils";
 
 type VehicleSettingsSubmenuLinkProps = {
   href: string;
@@ -12,6 +17,7 @@ type VehicleSettingsSubmenuLinkProps = {
   isLast?: boolean;
 };
 
+/** The `data-tour` wrapper is the card's direct child, so it draws the hairline instead of the row. */
 export function VehicleSettingsSubmenuLink({
   href,
   title,
@@ -20,12 +26,20 @@ export function VehicleSettingsSubmenuLink({
   isLast = false,
 }: VehicleSettingsSubmenuLinkProps) {
   return (
-    <div data-tour={tour}>
+    <div
+      data-tour={tour}
+      className={cn(
+        "relative",
+        IOS_ROW_SEPARATOR,
+        IOS_ROW_SEPARATOR_INSET_TEXT,
+        isLast && "after:hidden",
+      )}
+    >
       <IOSListItem
         label={title}
         sublabel={subtitle}
         href={href}
-        isLast={isLast}
+        isLast
         showChevron
       />
     </div>

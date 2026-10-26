@@ -78,7 +78,6 @@ type CoreTileSpec = {
   id: DashboardTileId;
   title: string;
   icon: DashboardIconName;
-  menuHighlight?: boolean;
   meta?: DashboardTileConfig["meta"];
   metaFromData?: (data: VehicleDashboardData) => DashboardTileConfig["meta"];
 };
@@ -123,7 +122,6 @@ function buildCoreMenuTiles(data: VehicleDashboardData): TileDraft[] {
     id: spec.id,
     title: spec.title,
     icon: spec.icon,
-    menuHighlight: spec.menuHighlight,
     meta: spec.metaFromData ? spec.metaFromData(data) : spec.meta,
   }));
 }

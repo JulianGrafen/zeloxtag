@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, Type } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
@@ -10,9 +10,13 @@ import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdaptiveDocumentDetailTitle } from "@/components/documents/adaptive-document-detail-title";
-import { DOCUMENT_DETAIL_TITLE_CLASS } from "@/components/documents/document-detail-hero";
 import { displayDocumentTitle } from "@/lib/documents/format";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+import {
+  EditableInsetRowShell,
+  InsetEditorButton,
+  type EditableSectionLayout,
+} from "@/components/documents/editable-inset-row-shell";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "title";
@@ -28,6 +32,7 @@ type EditableTitleSectionProps = {
   editPulse?: number;
   onEditRequestConsumed?: () => void;
   sectionId?: string;
+  layout?: EditableSectionLayout;
 };
 
 /**
@@ -44,6 +49,7 @@ export function EditableTitleSection({
   editPulse = 0,
   onEditRequestConsumed,
   sectionId,
+  layout = "default",
 }: EditableTitleSectionProps) {
   const router = useRouter();
   const storedTitle = displayDocumentTitle(title);
@@ -99,6 +105,34 @@ export function EditableTitleSection({
     });
   }
 
+  if (layout === "inset-row") {
+    return (
+      <EditableInsetRowShell
+        sectionId={sectionId}
+        label="Bezeichnung"
+        icon={Type}
+        iconTone="neutral"
+        value={displayTitle}
+        editing={editing}
+        pending={pending}
+        error={error}
+        onEdit={hideEditTrigger ? undefined : () => setEditing(true)}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        editor={
+          <Input
+            aria-label="Bezeichnung"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="z. B. Bremsen Hinterachse"
+            maxLength={160}
+            autoFocus
+          />
+        }
+      />
+    );
+  }
+
   return (
     <div id={sectionId} className="min-w-0 scroll-mt-24">
       {!editing ? (
@@ -112,7 +146,7 @@ export function EditableTitleSection({
               variant="button"
               onClick={() => setEditing(true)}
               aria-label="Titel bearbeiten"
-              className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] text-[color:var(--vd-text)]"
+              className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.08] text-white"
             >
               <Pencil className="h-3.5 w-3.5" aria-hidden />
             </PressableButton>
@@ -126,30 +160,18 @@ export function EditableTitleSection({
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               placeholder="z. B. Bremsen Hinterachse"
-              className="mt-0 text-[1.05rem] font-semibold"
+              className="mt-0 bg-[#2C2C2E] text-[1.05rem] font-semibold text-white"
               maxLength={160}
               autoFocus
             />
           </Label>
-          <div className="flex flex-wrap gap-2">
-            <PressableButton
-              type="button"
-              variant="button"
-              disabled={pending}
-              onClick={handleSave}
-              className="inline-flex items-center justify-center rounded-xl bg-neutral-900 px-3.5 py-2 text-[0.8rem] font-semibold text-white"
-            >
+          <div className="flex gap-2">
+            <InsetEditorButton tone="primary" disabled={pending} onClick={handleSave}>
               {pending ? "Speichern…" : "Speichern"}
-            </PressableButton>
-            <PressableButton
-              type="button"
-              variant="button"
-              disabled={pending}
-              onClick={handleCancel}
-              className="inline-flex items-center justify-center rounded-xl border border-[color:var(--vd-border)] px-3.5 py-2 text-[0.8rem] font-medium text-[color:var(--vd-text)]"
-            >
+            </InsetEditorButton>
+            <InsetEditorButton tone="secondary" disabled={pending} onClick={handleCancel}>
               Abbrechen
-            </PressableButton>
+            </InsetEditorButton>
           </div>
         </div>
       )}
@@ -157,7 +179,7 @@ export function EditableTitleSection({
       {error ? (
         <p
           role="alert"
-          className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[0.78rem] text-red-700"
+          className="mt-2 text-xs text-[#FF453A]"
         >
           {error}
         </p>

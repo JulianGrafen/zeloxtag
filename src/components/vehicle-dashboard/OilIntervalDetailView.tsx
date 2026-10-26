@@ -2,15 +2,13 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  CalendarClock,
-  CheckCircle2,
-  Gauge,
-  Pencil,
-  Wrench,
-} from "lucide-react";
+import { Pencil } from "lucide-react";
 
+import {
+  IOSListPage,
+  InsetGroupedCard,
+  InsetListRow,
+} from "@/components/ui/ios";
 import { isOilChangeSelfMadeVendor } from "@/lib/documents/oil-changes";
 import { resolveDocumentMileageKm } from "@/lib/documents/document-mileage";
 import { manualOilChangeFormFromDocument } from "@/lib/documents/manual-oil-change-form";
@@ -20,15 +18,11 @@ import {
   scrollToOilEditTarget,
   type OilDetailEditTarget,
 } from "@/lib/documents/oil-detail-edit";
+import { formatDateDE, formatMileageKm } from "@/utils/formatters";
 import type { Document } from "@/types/database";
 
 import type { OilChangeRecord } from "./oilChangeRecords";
 import { OilDetailEditPickerSheet } from "./oil-detail-edit-picker-sheet";
-import {
-  DocumentDetailHero,
-  DocumentDetailHeroAmount,
-  DocumentDetailHeroChip,
-} from "@/components/documents/document-detail-hero";
 import { EditableDocumentDateSection } from "@/components/documents/editable-document-date-section";
 import { EditableDocumentMileageSection } from "@/components/documents/editable-document-mileage-section";
 import { EditableDocumentNotesSection } from "@/components/documents/editable-document-notes-section";
@@ -39,17 +33,21 @@ import { EditableOilFilterSection } from "@/components/documents/editable-oil-fi
 import { EditableOilLitersSection } from "@/components/documents/editable-oil-liters-section";
 import { EditableOilSpecSection } from "@/components/documents/editable-oil-spec-section";
 import {
-  ServiceIntervalDueHint,
-  ServiceIntervalPartNumber,
-} from "./service-interval-meta";
+  IntervalNotesCard,
+  IntervalStatusCard,
+  NextIntervalCard,
+  OpenInvoiceRow,
+  intervalRuleFooter,
+} from "./interval-detail-sections";
 import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
-import { PressableButton, PressableLink } from "./Pressable";
+import { PressableButton } from "./Pressable";
 
 interface OilIntervalDetailViewProps {
   record: OilChangeRecord;
   document: Document;
   vehicleModel: string;
   backHref?: string;
+  backLabel?: string;
   invoiceHref?: string | null;
   tagUuid: string;
   vehicleId: string;
@@ -62,6 +60,7 @@ export function OilIntervalDetailView({
   document,
   vehicleModel,
   backHref = "/intervalle",
+  backLabel = "Service",
   invoiceHref = null,
   tagUuid,
   vehicleId,
@@ -120,325 +119,21 @@ export function OilIntervalDetailView({
   }
 
   const mileageDisplay =
-    mileageKm !== null && mileageKm > 0
-      ? mileageKm
-      : record.mileageKm;
+    mileageKm !== null && mileageKm > 0 ? mileageKm : record.mileageKm;
+  const subtitle = [record.date, vehicleModel, workshop]
+    .filter(Boolean)
+    .join(" · ");
 
-  return (
-    <div className="vd-root relative min-h-dvh overflow-x-hidden">
-      <div
-        aria-hidden
-        className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
-      />
+  const centralEditProps = {
+    documentId: document.id,
+    vehicleId,
+    tagUuid,
+    editPulse,
+    onEditRequestConsumed: handleEditRequestConsumed,
+  };
 
-      <div className="vd-anim-stack relative z-10 mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-        <PressableLink
-          href={backHref}
-          variant="pill"
-          className="inline-flex w-fit items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Zurück zur Historie
-        </PressableLink>
-
-        <DocumentDetailHero
-          title="Ölwechsel"
-          subtitle={
-            <>
-              {record.date}
-              {vehicleModel ? ` · ${vehicleModel}` : ""}
-              {workshop ? ` · ${workshop}` : ""}
-            </>
-          }
-          trailing={
-            <DocumentDetailHeroAmount>
-              {mileageDisplay.toLocaleString("de-DE")} km
-            </DocumentDetailHeroAmount>
-          }
-          chips={
-            <>
-              {record.status === "aktuell" ? (
-                <DocumentDetailHeroChip className="bg-emerald-500/10 text-emerald-700">
-                  <CheckCircle2 className="h-3 w-3" aria-hidden />
-                  Aktuell
-                </DocumentDetailHeroChip>
-              ) : (
-                <DocumentDetailHeroChip className="bg-neutral-900/5 text-[color:var(--vd-muted)]">
-                  Erledigt
-                </DocumentDetailHeroChip>
-              )}
-              <DocumentDetailHeroChip className="bg-neutral-900/5 text-[color:var(--vd-text)]">
-                {record.intervalKm.toLocaleString("de-DE")} km Intervall
-              </DocumentDetailHeroChip>
-            </>
-          }
-        />
-
-        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
-          <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Stand beim Wechsel
-          </h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {useCentralEdit ? (
-              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-                <EditableDocumentMileageSection
-                  documentId={document.id}
-                  vehicleId={vehicleId}
-                  tagUuid={tagUuid}
-                  mileageKm={mileageKm}
-                  label="Laufleistung"
-                  onSaved={setMileageKm}
-                  hideEditTrigger={useCentralEdit}
-                  editRequest={documentEditRequest}
-                  editPulse={editPulse}
-                  onEditRequestConsumed={handleEditRequestConsumed}
-                  sectionId={OIL_DETAIL_EDIT_ANCHORS.mileage}
-                />
-              </div>
-            ) : (
-              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-[color:var(--vd-muted)]">
-                  <Gauge className="h-3.5 w-3.5" aria-hidden />
-                  <span className="text-[0.7rem]">Laufleistung</span>
-                </div>
-                <p className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-                  {mileageDisplay.toLocaleString("de-DE")} km
-                </p>
-              </div>
-            )}
-            {useCentralEdit ? (
-              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-                <EditableDocumentDateSection
-                  documentId={document.id}
-                  vehicleId={vehicleId}
-                  tagUuid={tagUuid}
-                  date={documentDate}
-                  label="Datum"
-                  onSaved={setDocumentDate}
-                  hideEditTrigger={useCentralEdit}
-                  editRequest={documentEditRequest}
-                  editPulse={editPulse}
-                  onEditRequestConsumed={handleEditRequestConsumed}
-                  sectionId={OIL_DETAIL_EDIT_ANCHORS.date}
-                />
-              </div>
-            ) : (
-              <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-[color:var(--vd-muted)]">
-                  <CalendarClock className="h-3.5 w-3.5" aria-hidden />
-                  <span className="text-[0.7rem]">Datum</span>
-                </div>
-                <p className="text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-                  {record.date}
-                </p>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
-          <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Spezifikation
-          </h2>
-          <dl className="space-y-3 text-[0.88rem]">
-            {isManualOilLog && useCentralEdit ? (
-              <>
-                <EditableOilSpecSection
-                  documentId={document.id}
-                  vehicleId={vehicleId}
-                  tagUuid={tagUuid}
-                  oilSpec={oilSpec}
-                  onSaved={setOilSpec}
-                  hideEditTrigger={useCentralEdit}
-                  editRequest={editRequest}
-                  editPulse={editPulse}
-                  onEditRequestConsumed={handleEditRequestConsumed}
-                  sectionId={OIL_DETAIL_EDIT_ANCHORS.oilSpec}
-                />
-                <EditableOilLitersSection
-                  documentId={document.id}
-                  vehicleId={vehicleId}
-                  tagUuid={tagUuid}
-                  oilAmountLiters={oilLiters}
-                  onSaved={setOilLiters}
-                  editRequest={editRequest}
-                  editPulse={editPulse}
-                  onEditRequestConsumed={handleEditRequestConsumed}
-                  sectionId={OIL_DETAIL_EDIT_ANCHORS.oilLiters}
-                />
-                <EditableOilFilterSection
-                  documentId={document.id}
-                  vehicleId={vehicleId}
-                  tagUuid={tagUuid}
-                  filterChanged={filterChanged}
-                  onSaved={setFilterChanged}
-                  editRequest={editRequest}
-                  editPulse={editPulse}
-                  onEditRequestConsumed={handleEditRequestConsumed}
-                  sectionId={OIL_DETAIL_EDIT_ANCHORS.filter}
-                />
-                <EditableOilChangeVendorSection
-                  documentId={document.id}
-                  vehicleId={vehicleId}
-                  tagUuid={tagUuid}
-                  workshop={workshop}
-                  selfMade={oilSelfMade}
-                  vendorDraft={oilVendorDraft}
-                  onSaved={(nextWorkshop, nextSelfMade) => {
-                    setWorkshop(nextWorkshop);
-                    setOilSelfMade(nextSelfMade);
-                  }}
-                  hideEditTrigger={useCentralEdit}
-                  editRequest={editRequest}
-                  editPulse={editPulse}
-                  onEditRequestConsumed={handleEditRequestConsumed}
-                  sectionId={OIL_DETAIL_EDIT_ANCHORS.vendor}
-                />
-              </>
-            ) : (
-              <>
-                {oilSpec || record.oilSpec ? (
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-[color:var(--vd-muted)]">Öl</dt>
-                    <dd className="max-w-[60%] text-right font-medium text-[color:var(--vd-text)]">
-                      {oilSpec || record.oilSpec}
-                    </dd>
-                  </div>
-                ) : null}
-                {(oilLiters ?? record.oilAmountLiters) != null &&
-                (oilLiters ?? record.oilAmountLiters)! > 0 ? (
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-[color:var(--vd-muted)]">Menge</dt>
-                    <dd className="font-medium text-[color:var(--vd-text)]">
-                      {(oilLiters ?? record.oilAmountLiters)!.toLocaleString(
-                        "de-DE",
-                      )}{" "}
-                      l
-                    </dd>
-                  </div>
-                ) : null}
-                <div className="flex justify-between gap-3">
-                  <dt className="text-[color:var(--vd-muted)]">Filter</dt>
-                  <dd className="font-medium text-[color:var(--vd-text)]">
-                    {(isManualOilLog ? filterChanged : record.filterChanged)
-                      ? "Erneuert"
-                      : "Unverändert"}
-                  </dd>
-                </div>
-                {workshop ? (
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-[color:var(--vd-muted)]">
-                      {isOilChangeSelfMadeVendor(workshop)
-                        ? "Durchführung"
-                        : "Werkstatt"}
-                    </dt>
-                    <dd className="max-w-[60%] text-right font-medium text-[color:var(--vd-text)]">
-                      {workshop}
-                    </dd>
-                  </div>
-                ) : null}
-              </>
-            )}
-            {!isManualOilLog && useCentralEdit ? (
-              <div id={OIL_DETAIL_EDIT_ANCHORS.vendor} className="scroll-mt-24">
-                <EditableVendorSection
-                  documentId={document.id}
-                  vehicleId={vehicleId}
-                  tagUuid={tagUuid}
-                  vendor={document.vendor}
-                  label="Werkstatt"
-                  onSaved={(vendor) =>
-                    setWorkshop(vendor?.trim() || null)
-                  }
-                  hideEditTrigger={useCentralEdit}
-                  editRequest={documentEditRequest}
-                  editPulse={editPulse}
-                  onEditRequestConsumed={handleEditRequestConsumed}
-                />
-              </div>
-            ) : null}
-          </dl>
-        </section>
-
-        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]">
-          <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-            Nächstes Intervall
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <p className="text-[0.7rem] text-[color:var(--vd-muted)]">km-Ziel</p>
-              <p className="mt-0.5 text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-                {record.nextDueKm.toLocaleString("de-DE")} km
-              </p>
-            </div>
-            <div className="rounded-xl bg-[color:var(--vd-surface-elevated)] p-3">
-              <p className="text-[0.7rem] text-[color:var(--vd-muted)]">Spätestens</p>
-              <p className="mt-0.5 text-[0.95rem] font-semibold text-[color:var(--vd-text)]">
-                {record.nextDueDate}
-              </p>
-            </div>
-          </div>
-          <p className="mt-3 text-[0.78rem] text-[color:var(--vd-muted)]">
-            Intervall: alle {record.intervalKm.toLocaleString("de-DE")} km oder{" "}
-            {record.intervalMonths} Monate
-          </p>
-          <ServiceIntervalDueHint record={record} />
-          <ServiceIntervalPartNumber partNumber={record.partNumber} />
-        </section>
-
-        {isManualOilLog && useCentralEdit ? (
-          <EditableOilChangeNotesSection
-            documentId={document.id}
-            vehicleId={vehicleId}
-            tagUuid={tagUuid}
-            notes={userNotes}
-            onSaved={setUserNotes}
-            hideEditTrigger={useCentralEdit}
-            editRequest={editRequest}
-            editPulse={editPulse}
-            onEditRequestConsumed={handleEditRequestConsumed}
-            sectionId={OIL_DETAIL_EDIT_ANCHORS.notes}
-          />
-        ) : !isManualOilLog && useCentralEdit ? (
-          <EditableDocumentNotesSection
-            documentId={document.id}
-            vehicleId={vehicleId}
-            tagUuid={tagUuid}
-            notes={documentNotes}
-            onSaved={setDocumentNotes}
-            hideEditTrigger={useCentralEdit}
-            editRequest={documentEditRequest}
-            editPulse={editPulse}
-            onEditRequestConsumed={handleEditRequestConsumed}
-            sectionId={OIL_DETAIL_EDIT_ANCHORS.notes}
-          />
-        ) : (
-          <section
-            id={OIL_DETAIL_EDIT_ANCHORS.notes}
-            className="scroll-mt-24 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]"
-          >
-            <div className="mb-2 flex items-center gap-2 text-[color:var(--vd-muted)]">
-              <Wrench className="h-3.5 w-3.5" aria-hidden />
-              <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.16em]">
-                Notiz
-              </h2>
-            </div>
-            <p className="text-[0.88rem] leading-relaxed text-[color:var(--vd-text)]">
-              {isManualOilLog ? userNotes || record.notes : record.notes}
-            </p>
-            {invoiceHref && !record.isManual ? (
-              <PressableLink
-                href={invoiceHref}
-                variant="button"
-                className="mt-4 inline-flex items-center gap-1.5 text-[0.82rem] font-semibold text-[color:var(--vd-text)] underline-offset-2"
-              >
-                Zugehörige Rechnung öffnen
-              </PressableLink>
-            ) : null}
-          </section>
-        )}
-      </div>
-
+  const overlay = (
+    <>
       <OilDetailEditPickerSheet
         open={editPickerOpen}
         onClose={() => setEditPickerOpen(false)}
@@ -446,20 +141,219 @@ export function OilIntervalDetailView({
         isManualOilLog={isManualOilLog}
         invoiceDocumentHref={invoiceHref}
       />
-
       {useCentralEdit ? (
-        <FixedBottomActionBar>
+        <FixedBottomActionBar variant="ios">
           <PressableButton
             type="button"
             variant="button"
             onClick={() => setEditPickerOpen(true)}
-            className="claim-cta inline-flex w-full items-center justify-center gap-2"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-[17px] font-semibold text-black"
           >
             <Pencil className="h-4 w-4" aria-hidden />
             Bearbeiten
           </PressableButton>
         </FixedBottomActionBar>
       ) : null}
-    </div>
+    </>
+  );
+
+  const staticNotes = isManualOilLog ? userNotes || record.notes : record.notes;
+
+  return (
+    <IOSListPage
+      title="Ölwechsel"
+      subtitle={subtitle}
+      backHref={backHref}
+      backLabel={backLabel}
+      overlay={overlay}
+    >
+      <IntervalStatusCard status={record.status} intervalKm={record.intervalKm} />
+
+      <InsetGroupedCard header="Stand beim Wechsel">
+        {useCentralEdit ? (
+          <>
+            <EditableDocumentMileageSection
+              {...centralEditProps}
+              layout="inset-row"
+              mileageKm={mileageKm}
+              label="Laufleistung"
+              onSaved={setMileageKm}
+              hideEditTrigger
+              editRequest={documentEditRequest}
+              sectionId={OIL_DETAIL_EDIT_ANCHORS.mileage}
+            />
+            <EditableDocumentDateSection
+              {...centralEditProps}
+              layout="inset-row"
+              date={documentDate}
+              label="Datum"
+              onSaved={setDocumentDate}
+              hideEditTrigger
+              editRequest={documentEditRequest}
+              sectionId={OIL_DETAIL_EDIT_ANCHORS.date}
+            />
+          </>
+        ) : (
+          <>
+            <InsetListRow
+              label="Laufleistung"
+              value={formatMileageKm(mileageDisplay) ?? "—"}
+              valueVariant="numeric"
+            />
+            <InsetListRow
+              label="Datum"
+              value={formatDateDE(record.date) ?? record.date}
+              valueVariant="numeric"
+            />
+          </>
+        )}
+      </InsetGroupedCard>
+
+      <InsetGroupedCard header="Spezifikation">
+        {isManualOilLog && useCentralEdit ? (
+          <dl className="space-y-3 px-4 py-3 text-[15px]">
+            <EditableOilSpecSection
+              {...centralEditProps}
+              oilSpec={oilSpec}
+              onSaved={setOilSpec}
+              hideEditTrigger
+              editRequest={editRequest}
+              sectionId={OIL_DETAIL_EDIT_ANCHORS.oilSpec}
+            />
+            <EditableOilLitersSection
+              {...centralEditProps}
+              oilAmountLiters={oilLiters}
+              onSaved={setOilLiters}
+              editRequest={editRequest}
+              sectionId={OIL_DETAIL_EDIT_ANCHORS.oilLiters}
+            />
+            <EditableOilFilterSection
+              {...centralEditProps}
+              filterChanged={filterChanged}
+              onSaved={setFilterChanged}
+              editRequest={editRequest}
+              sectionId={OIL_DETAIL_EDIT_ANCHORS.filter}
+            />
+            <EditableOilChangeVendorSection
+              {...centralEditProps}
+              workshop={workshop}
+              selfMade={oilSelfMade}
+              vendorDraft={oilVendorDraft}
+              onSaved={(nextWorkshop, nextSelfMade) => {
+                setWorkshop(nextWorkshop);
+                setOilSelfMade(nextSelfMade);
+              }}
+              hideEditTrigger
+              editRequest={editRequest}
+              sectionId={OIL_DETAIL_EDIT_ANCHORS.vendor}
+            />
+          </dl>
+        ) : (
+          <>
+            <OilSpecRows
+              oilSpec={oilSpec || record.oilSpec}
+              oilLiters={oilLiters ?? record.oilAmountLiters}
+              filterChanged={
+                isManualOilLog ? filterChanged : record.filterChanged
+              }
+              workshop={useCentralEdit ? null : workshop}
+            />
+            {useCentralEdit ? (
+              <EditableVendorSection
+                {...centralEditProps}
+                layout="inset-row"
+                vendor={document.vendor}
+                label="Werkstatt"
+                onSaved={(vendor) => setWorkshop(vendor?.trim() || null)}
+                hideEditTrigger
+                editRequest={documentEditRequest}
+                sectionId={OIL_DETAIL_EDIT_ANCHORS.vendor}
+              />
+            ) : null}
+          </>
+        )}
+      </InsetGroupedCard>
+
+      <NextIntervalCard
+        nextDueKm={record.nextDueKm}
+        nextDueDate={record.nextDueDate}
+        partNumber={record.partNumber}
+        footer={intervalRuleFooter(record)}
+      />
+
+      {isManualOilLog && useCentralEdit ? (
+        <EditableOilChangeNotesSection
+          {...centralEditProps}
+          notes={userNotes}
+          onSaved={setUserNotes}
+          hideEditTrigger
+          editRequest={editRequest}
+          sectionId={OIL_DETAIL_EDIT_ANCHORS.notes}
+        />
+      ) : !isManualOilLog && useCentralEdit ? (
+        <EditableDocumentNotesSection
+          {...centralEditProps}
+          notes={documentNotes}
+          onSaved={setDocumentNotes}
+          hideEditTrigger
+          editRequest={documentEditRequest}
+          sectionId={OIL_DETAIL_EDIT_ANCHORS.notes}
+        />
+      ) : (
+        <>
+          {staticNotes ? (
+            <IntervalNotesCard
+              id={OIL_DETAIL_EDIT_ANCHORS.notes}
+              notes={staticNotes}
+            />
+          ) : null}
+          {invoiceHref && !record.isManual ? (
+            <InsetGroupedCard>
+              <OpenInvoiceRow
+                href={invoiceHref}
+                label="Zugehörige Rechnung öffnen"
+              />
+            </InsetGroupedCard>
+          ) : null}
+        </>
+      )}
+    </IOSListPage>
+  );
+}
+
+function OilSpecRows({
+  oilSpec,
+  oilLiters,
+  filterChanged,
+  workshop,
+}: {
+  oilSpec: string | null;
+  oilLiters: number | null;
+  filterChanged: boolean;
+  workshop: string | null;
+}) {
+  return (
+    <>
+      {oilSpec ? <InsetListRow label="Öl" value={oilSpec} /> : null}
+      {oilLiters != null && oilLiters > 0 ? (
+        <InsetListRow
+          label="Menge"
+          value={`${oilLiters.toLocaleString("de-DE")} l`}
+          valueVariant="numeric"
+        />
+      ) : null}
+      <InsetListRow
+        label="Filter"
+        value={filterChanged ? "Erneuert" : "Unverändert"}
+      />
+      {workshop ? (
+        <InsetListRow
+          label={
+            isOilChangeSelfMadeVendor(workshop) ? "Durchführung" : "Werkstatt"
+          }
+          value={workshop}
+        />
+      ) : null}
+    </>
   );
 }

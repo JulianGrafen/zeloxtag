@@ -10,6 +10,7 @@ import {
   PRODUCT_FEATURES_BANNER_AUTO_DISMISS_MS,
   PRODUCT_FEATURES_BANNER_SHOW_DELAY_MS,
 } from "@/lib/ui/product-features-banner";
+import { IOS_CARD, IconBadge } from "@/components/ui/ios";
 import { cn } from "@/lib/utils";
 
 type ProductFeaturesBannerProps = {
@@ -77,30 +78,22 @@ export function ProductFeaturesBanner({
     <div
       role="status"
       className={cn(
-        "vd-anim-header relative overflow-hidden rounded-[1.25rem] border border-[color:var(--vd-accent)]/25 bg-[color:var(--vd-surface)] px-4 py-3.5 shadow-[0_0_32px_-12px_color-mix(in_srgb,var(--vd-accent)_45%,transparent)] ring-1 ring-[color:var(--vd-border)]",
+        IOS_CARD,
+        "vd-anim-header relative px-4 py-3.5",
         className,
       )}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[color:var(--vd-accent)]/[0.07] via-transparent to-transparent"
-      />
       <div className="relative flex items-start gap-3">
-        <span
-          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-accent)]/12 text-[color:var(--vd-accent)]"
-          aria-hidden
-        >
-          <Sparkles className="h-4 w-4" />
-        </span>
+        <IconBadge icon={Sparkles} tone="purple" className="mt-0.5" />
         <div className="min-w-0 flex-1 space-y-2 pr-6">
-          <p className="text-[0.82rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+          <p className="text-[15px] font-semibold text-white">
             Neu: Build-Swipe & Kostenübersicht
           </p>
-          <ul className="space-y-1.5 text-[0.78rem] leading-relaxed text-[color:var(--vd-muted)]">
+          <ul className="space-y-1.5 text-[13px] leading-relaxed text-[#8E8E93]">
             <li>
               <Link
                 href={discoverHref}
-                className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-accent)]/40 underline-offset-2 hover:decoration-[color:var(--vd-accent)]"
+                className="font-medium text-[#0A84FF]"
                 onClick={() => dismiss(true)}
               >
                 Entdecken
@@ -111,7 +104,7 @@ export function ProductFeaturesBanner({
             <li>
               <Link
                 href={costsHref}
-                className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-accent)]/40 underline-offset-2 hover:decoration-[color:var(--vd-accent)]"
+                className="font-medium text-[#0A84FF]"
                 onClick={() => dismiss(true)}
               >
                 Kostenübersicht
@@ -124,7 +117,7 @@ export function ProductFeaturesBanner({
         <button
           type="button"
           onClick={() => dismiss(true)}
-          className="absolute right-1 top-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--vd-muted)] hover:bg-[color:var(--vd-surface-elevated)] hover:text-[color:var(--vd-text)]"
+          className="absolute right-1 top-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-[#8E8E93] hover:bg-white/[0.08] hover:text-white"
           aria-label="Hinweis schließen"
         >
           <X className="h-4 w-4" aria-hidden />

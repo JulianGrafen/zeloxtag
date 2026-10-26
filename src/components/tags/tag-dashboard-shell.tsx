@@ -697,7 +697,16 @@ export function TagDashboardShell({
 
   function handleTourOpenChange(open: boolean) {
     setTourOpen(open);
-    if (!open) return;
+    if (!open) {
+      if (
+        !silhouettePromptVisible &&
+        !showcaseSharePromptVisible &&
+        !showSilhouetteEditor
+      ) {
+        setDashboardPromptPhase("idle");
+      }
+      return;
+    }
     clearPromptTimers();
     setDashboardPromptPhase("tour");
     setSilhouettePromptVisible(false);
@@ -711,6 +720,7 @@ export function TagDashboardShell({
     setForceTour(false);
     postTourSequenceHandledRef.current = true;
     clearPromptTimers();
+    setDashboardPromptPhase("idle");
 
     if (!openShowcaseSharePromptIfEligible()) {
       continuePostOnboardingPrompts();
@@ -858,7 +868,9 @@ export function TagDashboardShell({
     }
 
     if (forceTour || deferSilhouetteForTour) {
-      setDashboardPromptPhase("tour");
+      if (tourOpen) {
+        setDashboardPromptPhase("tour");
+      }
       return () => {
         clearPromptTimers();
       };
@@ -893,6 +905,7 @@ export function TagDashboardShell({
     canWrite,
     forceTour,
     deferSilhouetteForTour,
+    tourOpen,
     wantsSilhouettePrompt,
     vehicle.id,
     isOwner,
@@ -1035,11 +1048,7 @@ export function TagDashboardShell({
         }
         onOpenScanner={handleOpenScanner}
         onOpenFuelScanner={handleOpenFuelScanner}
-        hideScanFab={
-          silhouettePromptVisible ||
-          showSilhouetteEditor ||
-          Boolean(paywallFeature)
-        }
+        hideScanFab={showSilhouetteEditor || Boolean(paywallFeature)}
         onLockedFeature={(feature, tileId) => {
           const goalOverride = tileId
             ? paywallGoalOverrideForDashboardTile(tileId)

@@ -7,7 +7,6 @@ export {
   AutomotiveList,
   AutomotiveListRow,
   AutomotiveSectionLabel,
-  AutomotiveSummaryPanel,
 } from "./AutomotiveList";
 export * from "./primitives";
 export * from "../garage-field";

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { Pencil } from "lucide-react";
+import { Euro, Pencil } from "lucide-react";
 
 import { updateDocumentFields } from "@/actions/update-document-fields";
 import { GermanAmountInput } from "@/components/documents/german-amount-input";
@@ -12,6 +12,10 @@ import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { DocumentDetailHeroAmount } from "@/components/documents/document-detail-hero";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
+import {
+  EditableInsetRowShell,
+  type EditableSectionLayout,
+} from "@/components/documents/editable-inset-row-shell";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "amount";
@@ -27,6 +31,7 @@ type EditableDocumentAmountSectionProps = {
   editPulse?: number;
   onEditRequestConsumed?: () => void;
   sectionId?: string;
+  layout?: EditableSectionLayout;
 };
 
 export function EditableDocumentAmountSection({
@@ -40,6 +45,7 @@ export function EditableDocumentAmountSection({
   editPulse = 0,
   onEditRequestConsumed,
   sectionId,
+  layout = "default",
 }: EditableDocumentAmountSectionProps) {
   const router = useRouter();
   const storedAmount = amount;
@@ -87,6 +93,34 @@ export function EditableDocumentAmountSection({
       setEditing(false);
       router.refresh();
     });
+  }
+
+  if (layout === "inset-row") {
+    return (
+      <EditableInsetRowShell
+        sectionId={sectionId}
+        label="Gesamtbetrag"
+        icon={Euro}
+        iconTone="green"
+        value={formatEur(displayAmount)}
+        valueVariant="numeric"
+        editing={editing}
+        pending={pending}
+        error={error}
+        onEdit={hideEditTrigger ? undefined : () => setEditing(true)}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        editor={
+          <GermanAmountInput
+            id={`editable-amount-${documentId}`}
+            variant="inset"
+            value={draft}
+            onChange={setDraft}
+            placeholder="189,50"
+          />
+        }
+      />
+    );
   }
 
   return (

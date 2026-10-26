@@ -37,11 +37,6 @@ export const automotiveMenuTileCompactClassName = cn(
   automotiveCardInteractiveClassName,
 );
 
-export const automotiveMenuTileHighlightClassName = cn(
-  "vd-automotive-card-surface--highlight",
-  "ring-1 ring-inset ring-amber-400/20",
-);
-
 export const automotiveIconWrapCompactClassName = cn(
   "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
   "bg-gradient-to-b from-zinc-700/50 to-zinc-900/80 text-zinc-100",

@@ -2,22 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Fuel } from "lucide-react";
 
-import { formatCompactGermanDate } from "@/lib/documents/format";
-import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import { formatLitersPer100Km } from "@/lib/vehicles/operating-costs/fuel-consumption";
 import { buildOperatingCostSummary } from "@/lib/vehicles/operating-costs/summary";
+import type { OperatingCostSummary } from "@/lib/vehicles/operating-costs/types";
 import type { VehicleOperatingCost } from "@/types/database";
+import { formatCurrencyEUR, formatDateDE } from "@/utils/formatters";
 
 import type { FuelScanTierSnapshot } from "@/lib/billing/subscription-types";
 
-import { ScanContent } from "@/components/layout/scan-content";
 import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
-import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
+import { IOSListPage } from "@/components/ui/ios";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 
+import { CostKpiCard, type CostKpi } from "./cost-kpi-card";
 import { FuelLogActions } from "./fuel-log-actions";
 import { FuelScanProUpgradeModal } from "./fuel-scan-pro-upgrade-modal";
 import { OperatingCostEntryList } from "./operating-cost-entry-list";
@@ -31,10 +30,61 @@ type VehicleFuelLogViewProps = {
   fuelScanTier?: FuelScanTierSnapshot;
 };
 
+function fuelEntryCountLabel(count: number): string {
+  return `${count.toLocaleString("de-DE")} ${count === 1 ? "Tankung" : "Tankungen"}`;
+}
+
+function consumptionKpis(fuelStats: OperatingCostSummary["fuelStats"]): CostKpi[] {
+  const { litersPer100Km, averageLitersPer100Km, eurosPer100Km } = fuelStats;
+  if (litersPer100Km == null) return [];
+  return [
+    {
+      label: "Verbrauch",
+      value: formatLitersPer100Km(litersPer100Km),
+      hint: "letzte Tankung",
+    },
+    {
+      label: "Ø Verbrauch",
+      value: formatLitersPer100Km(averageLitersPer100Km),
+      hint: eurosPer100Km != null ? `ca. ${formatCurrencyEUR(eurosPer100Km)}/100 km` : undefined,
+    },
+  ];
+}
+
+function FuelSummaryCard({
+  fuelStats,
+  hasFuelEntries,
+}: {
+  fuelStats: OperatingCostSummary["fuelStats"];
+  hasFuelEntries: boolean;
+}) {
+  const last = fuelStats.lastFill;
+  const kpis = consumptionKpis(fuelStats);
+  const showConsumptionHint = kpis.length === 0 && hasFuelEntries;
+
+  return (
+    <CostKpiCard
+      hero={{
+        label: "Letzter Tank",
+        value: last ? formatCurrencyEUR(Number(last.amount_eur)) : "—",
+        hint: last ? (formatDateDE(last.occurred_on) ?? undefined) : "Noch kein Eintrag",
+      }}
+      kpis={kpis}
+      heroAccessory={
+        showConsumptionHint ? (
+          <p className="text-xs leading-snug text-[#8E8E93]">
+            Verbrauch: nach zwei Tankungen mit Kilometerstand und Literangabe
+            berechenbar.
+          </p>
+        ) : undefined
+      }
+    />
+  );
+}
+
 export function VehicleFuelLogView({
   vehicleSurfaceScope,
   tagUuid,
-  vehicleId,
   entries,
   readOnly = false,
   fuelScanTier,
@@ -55,120 +105,61 @@ export function VehicleFuelLogView({
     .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
   const summary = buildOperatingCostSummary(entries);
 
-  const last = summary.fuelStats.lastFill;
-  const { litersPer100Km, averageLitersPer100Km, eurosPer100Km } =
-    summary.fuelStats;
+  const overlay =
+    !readOnly && fuelScanTier ? (
+      <>
+        <FuelScanProUpgradeModal
+          open={fuelPaywallOpen}
+          tagUuid={tagUuid}
+          onClose={() => setFuelPaywallOpen(false)}
+          onManualEntry={() => {
+            router.push(fuelManualHref);
+          }}
+        />
+        <DashboardScanFab
+          tagUuid={tagUuid}
+          directAction="menu"
+          menuTitle="Tankbeleg hinzufügen"
+          hideFuelAction
+          scanHref={fuelCaptureHref}
+          scanActionLabel="Tankbeleg scannen"
+          onOpenScanner={() => {
+            if (!fuelScanTier.canScan) {
+              setFuelPaywallOpen(true);
+              return;
+            }
+            router.push(fuelCaptureHref);
+          }}
+          manualEntryHref={fuelManualHref}
+          manualActionLabel="Manuell erfassen"
+          manualActionDescription="Liter, Preis und km ohne Scan"
+        />
+      </>
+    ) : null;
 
   return (
-    <ScanContent className="gap-5">
-      <header className="space-y-3">
-        <PressableLink
-          href={vehicleSurfaceHref(vehicleSurfaceScope)}
-          variant="pill"
-          className="vd-back-pill"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Dashboard
-        </PressableLink>
-        <h1 className="font-[family-name:var(--font-display)] text-[1.55rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-          Tanken
-        </h1>
-      </header>
+    <IOSListPage
+      title="Tanken"
+      subtitle={
+        <span className="tabular-nums">{fuelEntryCountLabel(fuelEntries.length)}</span>
+      }
+      backHref={vehicleSurfaceHref(vehicleSurfaceScope)}
+      overlay={overlay}
+    >
+      <FuelSummaryCard
+        fuelStats={summary.fuelStats}
+        hasFuelEntries={fuelEntries.length > 0}
+      />
 
-      <section className="zt-feature-panel p-4">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-            <Fuel className="h-5 w-5" aria-hidden />
-          </span>
-          <div>
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              Letzter Tank
-            </p>
-            <p className="mt-1 text-[1.1rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
-              {last ? formatEur(Number(last.amount_eur)) : "—"}
-            </p>
-            <p className="mt-0.5 text-[0.78rem] text-[color:var(--vd-muted)]">
-              {last
-                ? formatCompactGermanDate(last.occurred_on)
-                : "Noch kein Eintrag"}
-            </p>
-          </div>
-        </div>
-        {litersPer100Km != null ? (
-          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[color:var(--vd-border)] pt-4">
-            <div>
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Verbrauch
-              </p>
-              <p className="mt-1 text-[1rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
-                {formatLitersPer100Km(litersPer100Km)}
-              </p>
-              <p className="mt-0.5 text-[0.72rem] text-[color:var(--vd-muted)]">
-                letzte Tankung
-              </p>
-            </div>
-            <div>
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Ø Verbrauch
-              </p>
-              <p className="mt-1 text-[1rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
-                {formatLitersPer100Km(averageLitersPer100Km)}
-              </p>
-              {eurosPer100Km != null ? (
-                <p className="mt-0.5 text-[0.72rem] text-[color:var(--vd-muted)]">
-                  ca. {formatEur(eurosPer100Km)}/100 km
-                </p>
-              ) : null}
-            </div>
-          </div>
-        ) : fuelEntries.length > 0 ? (
-          <p className="mt-4 border-t border-[color:var(--vd-border)] pt-4 text-[0.78rem] text-[color:var(--vd-muted)]">
-            Verbrauch: nach zwei Tankungen mit Kilometerstand und Literangabe
-            berechenbar.
-          </p>
-        ) : null}
-      </section>
+      {!readOnly ? <FuelLogActions manualHref={fuelManualHref} /> : null}
 
-      {!readOnly ? (
-        <FuelLogActions manualHref={fuelManualHref} />
-      ) : null}
-
-      <section>
-        <h2 className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[color:var(--vd-muted)]">
-          Verlauf
-        </h2>
-        <OperatingCostEntryList
-          entries={fuelEntries}
-          vehicleSurfaceScope={vehicleSurfaceScope}
-          readOnly={readOnly}
-          fuelOnly
-        />
-      </section>
-
-      {!readOnly && fuelScanTier ? (
-        <>
-          <FuelScanProUpgradeModal
-            open={fuelPaywallOpen}
-            tagUuid={tagUuid}
-            onClose={() => setFuelPaywallOpen(false)}
-            onManualEntry={() => {
-              router.push(fuelManualHref);
-            }}
-          />
-          <DashboardScanFab
-            tagUuid={tagUuid}
-            directAction="fuel"
-            fuelLogHref={vehicleSurfaceHref(vehicleSurfaceScope, "tanken")}
-            onFuelScan={() => {
-              if (!fuelScanTier.canScan) {
-                setFuelPaywallOpen(true);
-                return;
-              }
-              router.push(fuelCaptureHref);
-            }}
-          />
-        </>
-      ) : null}
-    </ScanContent>
+      <OperatingCostEntryList
+        header="Verlauf"
+        entries={fuelEntries}
+        vehicleSurfaceScope={vehicleSurfaceScope}
+        readOnly={readOnly}
+        fuelOnly
+      />
+    </IOSListPage>
   );
 }

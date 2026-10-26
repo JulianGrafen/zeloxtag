@@ -15,6 +15,10 @@ import {
   documentDetailMetadataRowClassName,
   documentDetailMetadataValueClassName,
 } from "@/components/documents/document-detail-metadata-styles";
+import {
+  EditableInsetRowShell,
+  type EditableSectionLayout,
+} from "@/components/documents/editable-inset-row-shell";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +39,7 @@ type EditableVendorSectionProps = {
   sectionId?: string;
   /** Flat row inside {@link documentDetailMetadataListClassName}. */
   embedded?: boolean;
+  layout?: EditableSectionLayout;
 };
 
 /**
@@ -54,6 +59,7 @@ export function EditableVendorSection({
   onEditRequestConsumed,
   sectionId,
   embedded = false,
+  layout = "default",
 }: EditableVendorSectionProps) {
   const router = useRouter();
   const storedVendor = vendor?.trim() || null;
@@ -103,6 +109,33 @@ export function EditableVendorSection({
       setEditing(false);
       router.refresh();
     });
+  }
+
+  if (layout === "inset-row") {
+    return (
+      <EditableInsetRowShell
+        sectionId={sectionId}
+        label={label}
+        icon={Building2}
+        iconTone="blue"
+        value={displayVendor ?? "—"}
+        editing={editing}
+        pending={pending}
+        error={error}
+        onEdit={hideEditTrigger ? undefined : () => setEditing(true)}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        editor={
+          <Input
+            aria-label={label}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder={placeholder}
+            maxLength={160}
+          />
+        }
+      />
+    );
   }
 
   return (

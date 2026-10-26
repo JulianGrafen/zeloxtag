@@ -7,6 +7,7 @@ import { ShowcaseBuildStoryChronikSection } from "@/components/vehicles/showcase
 import { ShowcaseDocCollapsibleGroup } from "@/components/vehicles/showcase-doc-collapsible-group";
 import { ShowcaseDocumentPicker } from "@/components/vehicles/showcase-document-picker";
 import { ShowcaseModificationIosRow } from "@/components/vehicles/showcase-modification-ios-row";
+import { UmbautenSettingsScanFab } from "@/components/vehicles/umbauten-settings-scan-fab";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { usePublicShowcaseDocumentSelection } from "@/hooks/use-public-showcase-document-selection";
 import {
@@ -89,7 +90,6 @@ export function VehicleShowcaseModificationsSettings({
   const umbautenHref = vehicleSurfaceScope
     ? `${vehicleSurfaceHref(vehicleSurfaceScope, "umbauten")}?neu=1`
     : `/v/${tagUuid}/umbauten?neu=1`;
-
   const { invoices, modifications, manualEntries } = useMemo(
     () => partitionShowcaseSelectableDocuments(documents),
     [documents],
@@ -286,6 +286,13 @@ export function VehicleShowcaseModificationsSettings({
       ) : null}
       {error ? (
         <p className="text-[0.82rem] text-red-600" role="alert">{error}</p>
+      ) : null}
+
+      {canEdit ? (
+        <UmbautenSettingsScanFab
+          tagUuid={tagUuid}
+          vehicleSurfaceScope={vehicleSurfaceScope}
+        />
       ) : null}
     </div>
   );

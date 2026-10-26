@@ -2,26 +2,21 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  ClipboardList,
-  Eye,
-  Plus,
-  Trash2,
-  Wrench,
-} from "lucide-react";
+import { ClipboardList, Trash2 } from "lucide-react";
 
 import { deleteDocument } from "@/actions/delete-document";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { InvoiceUploader } from "@/components/dashboard/InvoiceUploader";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { ScanTypePicker } from "@/components/documents/scan-type-picker";
-import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
-import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
 import {
-  PressableButton,
-  PressableLink,
-} from "@/components/vehicle-dashboard/Pressable";
+  AutomotiveEmptyPanel,
+  AutomotiveList,
+  AutomotiveListRow,
+} from "@/components/ui/automotive";
+import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
+import { IOSEmptyState, IOSListPage } from "@/components/ui/ios";
+import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import {
   displayDocumentTitle,
   formatDocumentAmount,
@@ -187,186 +182,116 @@ export function ServiceInspectionsView({
     });
   }
 
+  const scanFab = canManageDocuments ? (
+    <DashboardScanFab
+      tagUuid={tagUuid}
+      directAction="menu"
+      menuTitle="Inspektion hinzufügen"
+      hideFuelAction
+      scanActionLabel="Beleg scannen"
+      onOpenScanner={() => {
+        setScanType(null);
+        setMode("pick-scan");
+      }}
+    />
+  ) : null;
+
   return (
-    <div className="vd-root relative min-h-dvh overflow-x-hidden">
-      <div
-        aria-hidden
-        className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
-      />
-
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-        <header className="vd-anim-header space-y-4">
-          <PressableLink
-            href={path()}
-            variant="pill"
-            className="vd-back-pill"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Dashboard
-          </PressableLink>
-
-          <AutomotiveFeatureTitlePanel
-            icon={<Wrench className="h-5 w-5" aria-hidden />}
-            title="Inspektionen"
-          />
-        </header>
-
-        {inspections.length > 0 ? (
-          <ListSearchControls
-            query={query}
-            onQueryChange={setQuery}
-            placeholder="Werkstatt, Titel, Notiz…"
-            resultLabel={searchResultLabel}
-          />
-        ) : null}
-
-        {error ? (
-          <p
-            role="alert"
-            className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
-          >
-            {error}
-          </p>
-        ) : null}
-
-        <section aria-label="Inspektionsliste" className="space-y-2">
-          {inspections.length === 0 ? (
-            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-                <ClipboardList className="h-5 w-5" aria-hidden />
-              </div>
-              <p className="font-medium text-[color:var(--vd-text)]">
-                Noch keine Inspektionen
-              </p>
-              <p className="mt-1">
-                Scanne Servicebelege, Ölwechsel oder Inspektionsrechnungen —
-                Werkstatt, Datum und Betrag werden automatisch erkannt.
-              </p>
-            </div>
-          ) : visibleInspections.length === 0 ? (
-            <div className="zt-feature-panel p-5 text-[0.9rem] text-[color:var(--vd-muted)] shadow-[var(--vd-shadow-sm)]">
-              Keine Treffer für diese Suche.
-            </div>
-          ) : (
-            <ul className="vd-anim-list zt-feature-panel overflow-hidden shadow-[var(--vd-shadow-sm)]">
-              {visibleInspections.map((doc) => {
-                const amount = formatDocumentAmount(doc.amount);
-                const workshop = doc.vendor?.trim() || null;
-                const isMock = doc.file_url.startsWith("mock://");
-                const canDelete =
-                  canManageDocuments &&
-                  (isMock || !doc.file_url.startsWith("/demo/"));
-                const detailHref = documentDetailHref(
-                  tagUuid,
-                  doc.id,
-                  vehicleSurfaceScope,
-                );
-
-                return (
-                  <li
-                    key={doc.id}
-                    className="flex w-full items-center gap-2 border-b border-[color:var(--vd-border)] px-3 py-3 last:border-b-0 sm:px-4 sm:py-3.5"
-                  >
-                    <PressableLink
-                      href={detailHref}
-                      variant="row"
-                      className="vd-pressable vd-pressable--row group flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-0.5 text-left"
-                    >
-                      <InspectionRowBody
-                        title={displayDocumentTitle(doc.title)}
-                        workshop={workshop}
-                        date={formatDocumentDate(doc.date)}
-                        amount={amount}
-                        showEye
-                      />
-                    </PressableLink>
-
-                    {canDelete ? (
-                      <PressableButton
-                        type="button"
-                        variant="button"
-                        aria-label={`Löschen: ${displayDocumentTitle(doc.title)}`}
-                        disabled={pending && pendingId === doc.id}
-                        onClick={() => handleDelete(doc.id)}
-                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--vd-border)] bg-white text-red-600 disabled:opacity-50"
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                      </PressableButton>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      {canManageDocuments ? (
-        <FixedBottomActionBar>
-          <PressableButton
-            type="button"
-            variant="button"
-            onClick={() => {
-              setScanType(null);
-              setMode("pick-scan");
-            }}
-            className="claim-cta inline-flex w-full items-center justify-center gap-2"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            Inspektion scannen
-          </PressableButton>
-        </FixedBottomActionBar>
+    <IOSListPage
+      title="Service & Wartung"
+      subtitle={`${inspections.length} Inspektionen`}
+      backHref={path()}
+      overlay={scanFab}
+    >
+      {inspections.length > 0 ? (
+        <ListSearchControls
+          query={query}
+          onQueryChange={setQuery}
+          placeholder="Werkstatt, Titel, Notiz…"
+          resultLabel={searchResultLabel}
+        />
       ) : null}
-    </div>
+
+      {error ? (
+        <p
+          role="alert"
+          className="rounded-xl bg-red-500/15 px-4 py-3 text-[15px] text-red-400"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      <section aria-label="Inspektionsliste">
+        {inspections.length === 0 ? (
+          <IOSEmptyState title="Noch keine Inspektionen" icon={ClipboardList}>
+            Scanne Servicebelege, Ölwechsel oder Inspektionsrechnungen —
+            Werkstatt, Datum und Betrag werden automatisch erkannt.
+          </IOSEmptyState>
+        ) : visibleInspections.length === 0 ? (
+          <AutomotiveEmptyPanel>Keine Treffer für diese Suche.</AutomotiveEmptyPanel>
+        ) : (
+          <AutomotiveList aria-label="Inspektionsliste">
+            {visibleInspections.map((doc) => (
+              <InspectionRow
+                key={doc.id}
+                document={doc}
+                href={documentDetailHref(tagUuid, doc.id, vehicleSurfaceScope)}
+                canDelete={
+                  canManageDocuments &&
+                  (doc.file_url.startsWith("mock://") ||
+                    !doc.file_url.startsWith("/demo/"))
+                }
+                deleting={pending && pendingId === doc.id}
+                onDelete={() => handleDelete(doc.id)}
+              />
+            ))}
+          </AutomotiveList>
+        )}
+      </section>
+    </IOSListPage>
   );
 }
 
-function InspectionRowBody({
-  title,
-  workshop,
-  date,
-  amount,
-  showEye = false,
+function InspectionRow({
+  document,
+  href,
+  canDelete,
+  deleting,
+  onDelete,
 }: {
-  title: string;
-  workshop: string | null;
-  date: string;
-  amount: string | null;
-  showEye?: boolean;
+  document: Document;
+  href: string;
+  canDelete: boolean;
+  deleting: boolean;
+  onDelete: () => void;
 }) {
+  const title = displayDocumentTitle(document.title);
+  const meta = [document.vendor?.trim() || null, formatDocumentDate(document.date)]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <>
-      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--vd-surface-elevated)] text-[color:var(--vd-accent)] ring-1 ring-[color:var(--vd-border)]">
-        <ClipboardList className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-start justify-between gap-2">
-          <span className="min-w-0">
-            <span className="block font-[family-name:var(--font-display)] text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
-              {title}
-            </span>
-            {workshop ? (
-              <span className="mt-0.5 block truncate text-[0.75rem] text-[color:var(--vd-muted)]">
-                {workshop}
-              </span>
-            ) : null}
-          </span>
-          {amount ? (
-            <span className="shrink-0 text-[0.88rem] font-semibold text-[color:var(--vd-text)]">
-              {amount}
-            </span>
-          ) : null}
-        </span>
-        <span className="mt-0.5 block text-[0.78rem] text-[color:var(--vd-muted)]">
-          Inspektion · {date}
-        </span>
-      </span>
-      {showEye ? (
-        <Eye
-          className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
-          aria-hidden
-        />
-      ) : null}
-    </>
+    <AutomotiveListRow
+      href={href}
+      icon={ClipboardList}
+      iconTone="blue"
+      title={title}
+      amount={formatDocumentAmount(document.amount) ?? undefined}
+      meta={meta}
+      accessory={
+        canDelete ? (
+          <PressableButton
+            type="button"
+            variant="button"
+            aria-label={`Löschen: ${title}`}
+            disabled={deleting}
+            onClick={onDelete}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[#FF453A] active:bg-white/10 disabled:opacity-40"
+          >
+            <Trash2 className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
+          </PressableButton>
+        ) : undefined
+      }
+    />
   );
 }

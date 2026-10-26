@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
-  Eye,
   FileText,
+  Receipt,
+  ShieldCheck,
   Stamp,
   Trash2,
+  type LucideIcon,
 } from "lucide-react";
 
 import { deleteDocument } from "@/actions/delete-document";
@@ -19,13 +20,14 @@ import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
 import {
   AutomotiveEmptyPanel,
   AutomotiveList,
-  AutomotiveSummaryPanel,
-  automotiveCardTitleClassName,
-  automotiveFilterChipActiveClassName,
-  automotiveFilterChipInactiveClassName,
-  automotiveIconWrapClassName,
-  automotiveMetaClassName,
+  AutomotiveListRow,
 } from "@/components/ui/automotive";
+import {
+  IOS_LINK,
+  IOSFilterChips,
+  IOSListPage,
+  type IconBadgeTone,
+} from "@/components/ui/ios";
 import { cn } from "@/lib/utils";
 import { PressableButton, PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { approvalKindLabel } from "@/lib/documents/approval-fields";
@@ -52,7 +54,6 @@ import {
   resolveVaultDocumentKind,
 } from "@/lib/documents/vault-documents";
 import type { VaultCategory } from "@/lib/validations/vaultClassificationSchema";
-import { isViewableDocumentUrl } from "@/lib/documents/viewable-url";
 import { isScanFabLocked } from "@/lib/billing/ai-scan-access";
 import { documentDetailHref } from "@/lib/vehicle-surface/documents-list-href";
 import {
@@ -304,197 +305,187 @@ export function VehicleDocumentsView({
     });
   }
 
+  const scanActionLabel =
+    activeType === "abe"
+      ? abeScanType === "abe"
+        ? "ABE scannen"
+        : "Gutachten scannen"
+      : activeType === "tuev"
+        ? "TÜV scannen"
+        : "Dokument scannen";
+
+  const scanFab = showScanFab ? (
+    <DashboardScanFab
+      tagUuid={tagUuid}
+      directAction="menu"
+      menuTitle="Dokument hinzufügen"
+      fuelLogHref={surfacePath(vehicleSurfaceScope, tagUuid, "tanken")}
+      manualEntryHref={`${surfacePath(vehicleSurfaceScope, tagUuid, "umbauten")}?neu=1`}
+      manualActionLabel="Manueller Eintrag"
+      manualActionDescription="Umbau, Service oder Notiz ohne Scan"
+      scanHref={ownerScanEntryHref(vehicleSurfaceScope, tagUuid, abeScanType)}
+      scanLocked={isScanFabLocked(
+        membershipActive,
+        freeInvoiceScanRemaining,
+        freeAbeScanRemaining,
+        abeScanType,
+      )}
+      scanActionLabel={scanActionLabel}
+    />
+  ) : null;
+
   return (
-    <div className="vd-root relative min-h-dvh overflow-x-hidden">
-      <div
-        aria-hidden
-        className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
+    <IOSListPage
+      title={PAGE_TITLES[activeType] ?? DEFAULT_PAGE_TITLE}
+      subtitle={
+        invoiceSum > 0
+          ? `Rechnungen ${formatDocumentAmount(invoiceSum)}`
+          : `${typed.length} Dokumente`
+      }
+      backHref={path()}
+      overlay={scanFab}
+    >
+      <IOSFilterChips
+        chips={typeFilterPills}
+        activeId={activeType}
+        onChange={onTypeFilterChange}
+        ariaLabel="Dokumentfilter"
       />
 
-      <div
-        className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5"
-      >
-        <header className="vd-anim-header space-y-4">
-          <PressableLink
-            href={path()}
-            variant="pill"
-            className="vd-back-pill"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Dashboard
-          </PressableLink>
-
-          <AutomotiveSummaryPanel
-            title={
-              activeType === "abe"
-                ? "ABE & Gutachten"
-                : activeType === "tuev"
-                  ? "TÜV / HU"
-                  : "Dokumente"
-            }
-            metric={
-              invoiceSum > 0
-                ? `Rechnungen ${formatDocumentAmount(invoiceSum)}`
-                : undefined
-            }
-          />
-        </header>
-
-        <nav
-          aria-label="Dokumentfilter"
-          className="vd-anim-header flex gap-2 overflow-x-auto pb-1"
+      {error ? (
+        <p
+          role="alert"
+          className="rounded-xl bg-red-500/15 px-4 py-3 text-[15px] text-red-400"
         >
-          {typeFilterPills.map((filter) => {
-            const active = activeType === filter.id;
-            return (
-              <PressableButton
-                key={filter.id}
-                type="button"
-                variant="pill"
-                onClick={() => onTypeFilterChange(filter.id)}
-                className={
-                  active
-                    ? automotiveFilterChipActiveClassName
-                    : automotiveFilterChipInactiveClassName
-                }
-              >
-                {filter.label}
-              </PressableButton>
-            );
-          })}
-        </nav>
-
-        {error ? (
-          <p
-            role="alert"
-            className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
-          >
-            {error}
-          </p>
-        ) : null}
-
-        <ListSearchControls
-          query={query}
-          onQueryChange={setQuery}
-          placeholder={
-            activeType === "abe"
-              ? "Teil, Kategorie, Hersteller, KBA…"
-              : activeType === "tuev"
-                ? "Prüfstelle, Titel, Notiz…"
-                : "Titel, Hersteller, Kategorie…"
-          }
-          chips={
-            activeType === "abe" && vaultCategoryChips.length > 1
-              ? vaultCategoryChips
-              : undefined
-          }
-          activeChipId={vaultCategoryId}
-          onChipChange={(id) =>
-            setVaultCategoryId(id as VaultCategory | "all")
-          }
-          resultLabel={searchResultLabel}
-        />
-
-        <section aria-label="Dokumentliste" className="space-y-2">
-          {filtered.length === 0 ? (
-            <AutomotiveEmptyPanel>
-              {typed.length > 0 &&
-              (query.trim() ||
-                (activeType === "abe" && vaultCategoryId !== "all")) ? (
-                "Keine Treffer für diese Suche / Filter."
-              ) : activeType === "abe" ? (
-                <div className="space-y-2">
-                  <p>Noch kein Gutachten hinterlegt.</p>
-                  <p className="text-[0.82rem] leading-relaxed">
-                    Hier gehören{" "}
-                    <span className="font-medium text-[color:var(--vd-text)]">
-                      ABE, Teilegutachten und Einzelabnahmen
-                    </span>
-                    . Pro Scan immer nur{" "}
-                    <span className="font-medium text-[color:var(--vd-text)]">
-                      ein Bauteil
-                    </span>
-                    — bitte alle Seiten des Dokuments scannen.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p>Noch keine Dokumente in dieser Kategorie.</p>
-                  {!canWrite ? (
-                    <p className="text-[0.82rem] leading-relaxed">
-                      Manuelle Einträge kannst du jederzeit kostenlos anlegen —{" "}
-                      <PressableLink
-                        href={`${path("umbauten")}?neu=1`}
-                        className="font-medium text-[color:var(--vd-text)] underline-offset-2 hover:underline"
-                      >
-                        jetzt eintragen
-                      </PressableLink>
-                      . KI-Scan und neue Uploads sind Teil von Pro.
-                    </p>
-                  ) : null}
-                </div>
-              )}
-            </AutomotiveEmptyPanel>
-          ) : (
-            <AutomotiveList aria-label="Dokumentliste">
-              {filtered.map((doc, index) => (
-                <li key={doc.id}>
-                  <DocumentRow
-                    detailHref={documentDetailHref(
-                      tagUuid,
-                      doc.id,
-                      vehicleSurfaceScope,
-                    )}
-                    document={doc}
-                    canDelete={canWrite}
-                    deleting={pending && pendingId === doc.id}
-                    onDelete={() => handleDelete(doc)}
-                  />
-                  {index < filtered.length - 1 ? (
-                    <div
-                      aria-hidden
-                      className="mx-4 border-t border-[color:var(--vd-border)]"
-                    />
-                  ) : null}
-                </li>
-              ))}
-            </AutomotiveList>
-          )}
-        </section>
-
-        <VehicleDataDisclaimer />
-      </div>
-
-      {showScanFab ? (
-        <DashboardScanFab
-          tagUuid={tagUuid}
-          directAction="scan"
-          fuelLogHref={surfacePath(vehicleSurfaceScope, tagUuid, "tanken")}
-          manualEntryHref={`${surfacePath(vehicleSurfaceScope, tagUuid, "umbauten")}?neu=1`}
-          scanHref={ownerScanEntryHref(
-            vehicleSurfaceScope,
-            tagUuid,
-            abeScanType,
-          )}
-          scanLocked={isScanFabLocked(
-            membershipActive,
-            freeInvoiceScanRemaining,
-            freeAbeScanRemaining,
-            abeScanType,
-          )}
-          scanActionLabel={
-            activeType === "abe"
-              ? abeScanType === "abe"
-                ? "ABE scannen"
-                : "Gutachten scannen"
-              : activeType === "tuev"
-                ? "TÜV scannen"
-                : "Dokument scannen"
-          }
-        />
+          {error}
+        </p>
       ) : null}
-    </div>
+
+      <ListSearchControls
+        query={query}
+        onQueryChange={setQuery}
+        placeholder={
+          activeType === "abe"
+            ? "Teil, Kategorie, Hersteller, KBA"
+            : activeType === "tuev"
+              ? "Prüfstelle, Titel, Notiz"
+              : "Titel, Hersteller, Kategorie"
+        }
+        chips={
+          activeType === "abe" && vaultCategoryChips.length > 1
+            ? vaultCategoryChips
+            : undefined
+        }
+        activeChipId={vaultCategoryId}
+        onChipChange={(id) => setVaultCategoryId(id as VaultCategory | "all")}
+        resultLabel={searchResultLabel}
+      />
+
+      <section aria-label="Dokumentliste">
+        {filtered.length === 0 ? (
+          <AutomotiveEmptyPanel>
+            {typed.length > 0 &&
+            (query.trim() ||
+              (activeType === "abe" && vaultCategoryId !== "all")) ? (
+              "Keine Treffer für diese Suche / Filter."
+            ) : activeType === "abe" ? (
+              <div className="space-y-2">
+                <p className="font-semibold text-white">
+                  Noch kein Gutachten hinterlegt.
+                </p>
+                <p>
+                  Hier gehören ABE, Teilegutachten und Einzelabnahmen hin. Pro
+                  Scan immer nur ein Bauteil — bitte alle Seiten des Dokuments
+                  scannen.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="font-semibold text-white">
+                  Noch keine Dokumente in dieser Kategorie.
+                </p>
+                {!canWrite ? (
+                  <p>
+                    Manuelle Einträge kannst du jederzeit kostenlos anlegen —{" "}
+                    <PressableLink
+                      href={`${path("umbauten")}?neu=1`}
+                      className={cn("font-medium", IOS_LINK)}
+                    >
+                      jetzt eintragen
+                    </PressableLink>
+                    . KI-Scan und neue Uploads sind Teil von Pro.
+                  </p>
+                ) : null}
+              </div>
+            )}
+          </AutomotiveEmptyPanel>
+        ) : (
+          <AutomotiveList aria-label="Dokumentliste">
+            {filtered.map((doc) => (
+              <DocumentRow
+                key={doc.id}
+                detailHref={documentDetailHref(tagUuid, doc.id, vehicleSurfaceScope)}
+                document={doc}
+                canDelete={canWrite}
+                deleting={pending && pendingId === doc.id}
+                onDelete={() => handleDelete(doc)}
+              />
+            ))}
+          </AutomotiveList>
+        )}
+      </section>
+
+      <VehicleDataDisclaimer />
+    </IOSListPage>
   );
+}
+
+const DEFAULT_PAGE_TITLE = "Dokumente";
+
+const PAGE_TITLES: Partial<Record<DocumentType | "all", string>> = {
+  abe: "ABE & Gutachten",
+  tuev: "TÜV / HU",
+};
+
+const DOCUMENT_ICON: Record<DocumentType, { icon: LucideIcon; tone: IconBadgeTone }> = {
+  invoice: { icon: Receipt, tone: "blue" },
+  abe: { icon: Stamp, tone: "purple" },
+  tuev: { icon: ShieldCheck, tone: "green" },
+  other: { icon: FileText, tone: "neutral" },
+};
+
+function documentTypeMetaLabel(document: Document): string {
+  if (document.type === "abe" && isVaultDocument(document)) {
+    const kind = resolveVaultDocumentKind(document);
+    const kindLabel =
+      kind && kind !== "abe" ? vaultDocumentKindLabel(document) : null;
+    return ["Gutachten Tresor", kindLabel, vaultCategoryLabel(document)]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  if (document.type === "abe") return approvalKindLabel(document.approval_fields);
+  if (document.type === "tuev" && document.approval_fields?.kind === "tuev") {
+    return approvalKindLabel(document.approval_fields);
+  }
+  return documentTypeLabel(document.type);
+}
+
+/** Leftover maker/model when the ABE title ("Hersteller Modell") doesn't already contain it. */
+function documentSubtitle(document: Document, listTitle: string): string | null {
+  if (document.type === "invoice") return document.vendor?.trim() || null;
+  if (document.type !== "abe") return null;
+  const manufacturer = document.manufacturer?.trim() || "";
+  const model = document.vendor?.trim() || "";
+  if (
+    manufacturer &&
+    !listTitle.toLowerCase().startsWith(manufacturer.toLowerCase())
+  ) {
+    return manufacturer;
+  }
+  if (model && !listTitle.toLowerCase().includes(model.toLowerCase())) {
+    return model;
+  }
+  return null;
 }
 
 function DocumentRow({
@@ -510,147 +501,51 @@ function DocumentRow({
   deleting: boolean;
   onDelete: () => void;
 }) {
-  const amount = formatDocumentAmount(document.amount);
   const fileUrl = document.file_url ?? "";
   const isMock = fileUrl.startsWith("mock://");
-  const canView = isViewableDocumentUrl(fileUrl);
-  const Icon = document.type === "abe" ? Stamp : FileText;
-  const canDelete =
-    allowDelete && (isMock || !fileUrl.startsWith("/demo/"));
+  const canDelete = allowDelete && (isMock || !fileUrl.startsWith("/demo/"));
   const lineCount = document.line_items?.length ?? 0;
   const approvalCount = document.vehicle_approvals?.length ?? 0;
+  const { icon, tone } = DOCUMENT_ICON[document.type] ?? DOCUMENT_ICON.other;
 
   const listTitle =
     document.type === "abe" && !isVaultDocument(document)
       ? displayAbeDocumentTitle(document)
       : displayDocumentTitle(document.title);
-  const manufacturer = document.manufacturer?.trim() || "";
-  const model = document.vendor?.trim() || "";
-  const subtitle =
-    document.type === "invoice"
-      ? document.vendor?.trim() || null
-      : document.type === "abe"
-        ? // Title is already "Hersteller Modell" — only show leftover model/brand if needed.
-          manufacturer &&
-          !listTitle.toLowerCase().startsWith(manufacturer.toLowerCase())
-            ? manufacturer
-            : model &&
-                !listTitle.toLowerCase().includes(model.toLowerCase())
-              ? model
-              : null
-        : null;
-
-  const typeLabel =
-    document.type === "abe" && isVaultDocument(document)
-      ? (() => {
-          const kind = resolveVaultDocumentKind(document);
-          const kindLabel =
-            kind && kind !== "abe" ? vaultDocumentKindLabel(document) : null;
-          const categoryLabel = vaultCategoryLabel(document);
-          const parts = ["Gutachten Tresor"];
-          if (kindLabel) parts.push(kindLabel);
-          if (categoryLabel) parts.push(categoryLabel);
-          return parts.join(" · ");
-        })()
-      : document.type === "abe"
-        ? approvalKindLabel(document.approval_fields)
-        : document.type === "tuev" && document.approval_fields?.kind === "tuev"
-          ? approvalKindLabel(document.approval_fields)
-          : documentTypeLabel(document.type);
-
-  const meta = (
-    <span className={cn(automotiveMetaClassName, "mt-0.5 block")}>
-      {typeLabel}
-      {" · "}
-      {formatDocumentDate(document.date)}
-      {document.type === "invoice" && lineCount > 0
-        ? ` · ${lineCount} Positionen`
-        : ""}
-      {document.type === "abe" && document.kba_number
-        ? ` · ${document.kba_number}`
-        : ""}
-      {document.type === "abe" && approvalCount > 0
-        ? ` · ${approvalCount} Freigaben`
-        : ""}
-      {isMock ? " · Demo (keine Datei)" : ""}
-    </span>
-  );
-
-  const body = (
-    <>
-      <span className={automotiveIconWrapClassName}>
-        <Icon className="h-5 w-5 text-zinc-100" strokeWidth={1.75} aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-start justify-between gap-2">
-          <span className="min-w-0">
-            <span
-              className={cn(automotiveCardTitleClassName, "block truncate")}
-              title={listTitle}
-            >
-              {listTitle}
-            </span>
-            {subtitle ? (
-              <span
-                className={cn(
-                  automotiveMetaClassName,
-                  "mt-0.5 block truncate",
-                )}
-                title={subtitle}
-              >
-                {subtitle}
-              </span>
-            ) : null}
-          </span>
-          {amount ? (
-            <span
-              className={cn(
-                automotiveCardTitleClassName,
-                "shrink-0 text-[0.88rem] tabular-nums",
-              )}
-            >
-              {amount}
-            </span>
-          ) : null}
-        </span>
-        {meta}
-      </span>
-      {canView ? (
-        <Eye
-          className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
-          aria-hidden
-        />
-      ) : null}
-    </>
-  );
+  const meta = [
+    documentSubtitle(document, listTitle),
+    documentTypeMetaLabel(document),
+    formatDocumentDate(document.date),
+    document.type === "invoice" && lineCount > 0 ? `${lineCount} Positionen` : null,
+    document.type === "abe" ? document.kba_number : null,
+    document.type === "abe" && approvalCount > 0 ? `${approvalCount} Freigaben` : null,
+    isMock ? "Demo (keine Datei)" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <div className="flex w-full items-center gap-2 px-3 py-3 text-left sm:px-4 sm:py-3.5">
-      <PressableLink
-        href={detailHref}
-        variant="row"
-        className="vd-pressable vd-pressable--row group flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-0.5 text-left"
-      >
-        {body}
-      </PressableLink>
-
-      {canDelete ? (
-        <PressableButton
-          type="button"
-          variant="button"
-          aria-label={`Löschen: ${listTitle}`}
-          disabled={deleting}
-          onClick={onDelete}
-          className={[
-            "inline-flex shrink-0 items-center justify-center rounded-lg border border-red-200/80 bg-red-50/80 text-red-700 disabled:opacity-50",
-            document.type === "abe"
-              ? "h-8 w-8"
-              : "h-10 w-10 rounded-xl border-[color:var(--vd-border)] bg-white text-red-600",
-          ].join(" ")}
-        >
-          <Trash2 className="h-3.5 w-3.5" aria-hidden />
-        </PressableButton>
-      ) : null}
-    </div>
+    <AutomotiveListRow
+      href={detailHref}
+      icon={icon}
+      iconTone={tone}
+      title={listTitle}
+      amount={formatDocumentAmount(document.amount) ?? undefined}
+      meta={meta}
+      accessory={
+        canDelete ? (
+          <PressableButton
+            type="button"
+            variant="button"
+            aria-label={`Löschen: ${listTitle}`}
+            disabled={deleting}
+            onClick={onDelete}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[#FF453A] active:bg-white/10 disabled:opacity-40"
+          >
+            <Trash2 className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
+          </PressableButton>
+        ) : undefined
+      }
+    />
   );
 }

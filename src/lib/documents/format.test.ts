@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  displayDocumentTitle,
   formatCompactGermanDate,
   formatDocumentDate,
   formatDocumentDateCompact,
@@ -8,6 +9,27 @@ import {
   normalizeDocumentDateForUpload,
   normalizeDocumentDateIso,
 } from "@/lib/documents/format";
+
+describe("displayDocumentTitle", () => {
+  it("strips the category tag and restores OCR umlauts", () => {
+    // Arrange
+    const raw = "[service] Bremsfluessigkeit DOT4 1 Liter";
+
+    // Act
+    const title = displayDocumentTitle(raw);
+
+    // Assert
+    expect(title).toBe("Bremsflüssigkeit DOT4 1 Liter");
+  });
+
+  it("leaves correct German with ue-sequences untouched", () => {
+    expect(displayDocumentTitle("Neue Steuerkette")).toBe("Neue Steuerkette");
+  });
+
+  it("falls back to the raw title when only a tag is present", () => {
+    expect(displayDocumentTitle("[repair]")).toBe("[repair]");
+  });
+});
 
 describe("normalizeDocumentDateIso", () => {
   it("parses mixed OCR / UI formats to ISO", () => {

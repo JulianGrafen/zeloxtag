@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, BarChart3, Receipt, Upload } from "lucide-react";
+import { BarChart3, Receipt, Upload } from "lucide-react";
 
 import { ListSearchControls } from "@/components/documents/list-search-controls";
 import { ProductFeaturesBanner } from "@/components/onboarding/product-features-banner";
@@ -13,9 +13,15 @@ import {
   AutomotiveList,
   AutomotiveListRow,
   AutomotiveSectionLabel,
-  AutomotiveSummaryPanel,
-  automotiveSecondaryButtonClassName,
 } from "@/components/ui/automotive";
+import {
+  IOS_LINK,
+  IOSListPage,
+  InsetGroupedCard,
+  InsetListRow,
+  type IconBadgeTone,
+} from "@/components/ui/ios";
+import { cn } from "@/lib/utils";
 import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import {
   displayDocumentTitle,
@@ -235,189 +241,181 @@ function VehicleInvoicesViewContent({
       ? "Reparaturen"
       : "Rechnungen & Belege";
 
+  const scanFab = showScanFab ? (
+    <DashboardScanFab
+      tagUuid={tagUuid}
+      directAction="menu"
+      menuTitle="Beleg hinzufügen"
+      hideFuelAction
+      manualEntryHref={manualUploadHref}
+      manualActionLabel="Manuell hinzufügen"
+      manualActionDescription="PDF oder Foto ohne KI-Scan hochladen"
+      scanHref={ownerScanEntryHref(
+        vehicleSurfaceScope,
+        tagUuid,
+        categoryId === "repair" ? "repair" : "invoice",
+      )}
+      scanLocked={isScanFabLocked(
+        membershipActive,
+        freeInvoiceScanRemaining,
+        freeAbeScanRemaining,
+        categoryId === "repair" ? "repair" : "invoice",
+      )}
+      scanActionLabel={
+        categoryId === "repair" ? "Reparatur scannen" : "Rechnung scannen"
+      }
+    />
+  ) : null;
+
   return (
-    <div className="vd-root relative min-h-dvh overflow-x-hidden">
+    <IOSListPage
+      title={heading}
+      subtitle={`Summe ${totalLabel}`}
+      backHref={path("")}
+      overlay={scanFab}
+    >
       <Suspense fallback={null}>
         <VehicleInvoicesUrlQuerySync
           onSaved={onSavedQuery}
           onHighlight={onHighlightQuery}
         />
       </Suspense>
-      <div
-        aria-hidden
-        className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
-      />
-
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-        {showScanFab ? (
-          <ProductFeaturesBanner
-            discoverHref={path("entdecken")}
-            costsHref={path("dokumente/kosten")}
-            active
-          />
-        ) : null}
-
-        <header className="vd-anim-header space-y-4">
-          <PressableLink
-            href={path("")}
-            variant="pill"
-            className="vd-back-pill"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Zurück
-          </PressableLink>
-
-          <AutomotiveSummaryPanel
-            title={heading}
-            metric={`Summe ${totalLabel}`}
-          >
-            {canWrite ? (
-              <PressableLink
-                href={manualUploadHref}
-                variant="button"
-                className={`${automotiveSecondaryButtonClassName} mt-4`}
-              >
-                <Upload className="h-4 w-4 text-amber-300" aria-hidden />
-                Beleg manuell hinzufügen
-              </PressableLink>
-            ) : null}
-            {invoices.length > 0 ? (
-              <PressableLink
-                href={path("dokumente/kosten")}
-                variant="button"
-                className={`${automotiveSecondaryButtonClassName} mt-3`}
-              >
-                <BarChart3 className="h-4 w-4 text-current" aria-hidden />
-                Kostenübersicht
-              </PressableLink>
-            ) : null}
-          </AutomotiveSummaryPanel>
-        </header>
-
-        <ListSearchControls
-          query={query}
-          onQueryChange={setQuery}
-          placeholder="Werkstatt, Titel, Position, Rechnungsnr…"
-          chips={categoryChips}
-          activeChipId={categoryId}
-          onChipChange={setCategoryId}
-          resultLabel={searchResultLabel}
-        />
-
-        <section aria-label="Belegliste" className="space-y-4">
-          <AutomotiveSectionLabel>Belegliste</AutomotiveSectionLabel>
-
-          {invoices.length === 0 ? (
-            <AutomotiveEmptyPanel>
-              Noch keine Rechnungen. Scanne deinen ersten Beleg
-              {canWrite ? (
-                <>
-                  {" "}
-                  oder{" "}
-                  <PressableLink
-                    href={manualUploadHref}
-                    className="font-medium text-[color:var(--vd-text)] underline decoration-[color:var(--vd-border)] underline-offset-4"
-                  >
-                    lade einen Beleg hoch
-                  </PressableLink>
-                  .
-                </>
-              ) : (
-                "."
-              )}
-            </AutomotiveEmptyPanel>
-          ) : visible.length === 0 ? (
-            <AutomotiveEmptyPanel>
-              Keine Treffer für diese Suche / Filter.
-            </AutomotiveEmptyPanel>
-          ) : (
-            <div className="space-y-4">
-              {groupedVisible.map(({ monthKey, items: monthDocs }) => (
-                <div key={monthKey} className="space-y-2">
-                  <h2
-                    className="px-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]"
-                  >
-                    {formatIsoMonthKeyLabel(monthKey)}
-                  </h2>
-                  <AutomotiveList aria-label={`Belege ${formatIsoMonthKeyLabel(monthKey)}`}>
-                    {monthDocs.map((doc, index) => {
-                      const amount =
-                        typeof doc.amount === "number"
-                          ? formatDocumentAmount(doc.amount)
-                          : null;
-                      const vendor =
-                        doc.vendor?.trim() || "Unbekannter Anbieter";
-                      const issued = formatDocumentDateCompact(doc.date);
-                      const categoryLabel =
-                        INVOICE_LIST_CATEGORY_LABELS[
-                          resolveInvoiceListCategory(doc.category)
-                        ];
-                      const paymentBadge = resolveInvoicePaymentBadge(doc);
-
-                      return (
-                        <AutomotiveListRow
-                          key={doc.id}
-                          className={
-                            highlightId === doc.id
-                              ? "bg-emerald-500/8 ring-1 ring-inset ring-emerald-500/25"
-                              : undefined
-                          }
-                          href={documentDetailHref(
-                            tagUuid,
-                            doc.id,
-                            vehicleSurfaceScope,
-                          )}
-                          icon={Receipt}
-                          title={displayDocumentTitle(doc.title)}
-                          amount={amount ?? undefined}
-                          meta={`${vendor} · ${issued} · ${categoryLabel}`}
-                          badge={
-                            paymentBadge ? (
-                              <span className="inline-flex rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-400">
-                                {paymentBadge}
-                              </span>
-                            ) : undefined
-                          }
-                          showDivider={index < monthDocs.length - 1}
-                        />
-                      );
-                    })}
-                  </AutomotiveList>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <VehicleDataDisclaimer />
-      </div>
 
       {showScanFab ? (
-        <DashboardScanFab
-          tagUuid={tagUuid}
-          directAction="menu"
-          menuTitle="Beleg hinzufügen"
-          hideFuelAction
-          manualEntryHref={manualUploadHref}
-          manualActionLabel="Manuell hinzufügen"
-          manualActionDescription="PDF oder Foto ohne KI-Scan hochladen"
-          scanHref={ownerScanEntryHref(
-            vehicleSurfaceScope,
-            tagUuid,
-            categoryId === "repair" ? "repair" : "invoice",
-          )}
-          scanLocked={isScanFabLocked(
-            membershipActive,
-            freeInvoiceScanRemaining,
-            freeAbeScanRemaining,
-            categoryId === "repair" ? "repair" : "invoice",
-          )}
-          scanActionLabel={
-            categoryId === "repair" ? "Reparatur scannen" : "Rechnung scannen"
-          }
+        <ProductFeaturesBanner
+          discoverHref={path("entdecken")}
+          costsHref={path("dokumente/kosten")}
+          active
         />
       ) : null}
-    </div>
+
+      {canWrite || invoices.length > 0 ? (
+        <InsetGroupedCard>
+          {canWrite ? (
+            <InsetListRow
+              href={manualUploadHref}
+              icon={Upload}
+              iconTone="amber"
+              emphasis="navigation"
+              label="Beleg manuell hinzufügen"
+            />
+          ) : null}
+          {invoices.length > 0 ? (
+            <InsetListRow
+              href={path("dokumente/kosten")}
+              icon={BarChart3}
+              iconTone="blue"
+              emphasis="navigation"
+              label="Kostenübersicht"
+            />
+          ) : null}
+        </InsetGroupedCard>
+      ) : null}
+
+      <ListSearchControls
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Werkstatt, Titel, Position, Rechnungsnr."
+        chips={categoryChips}
+        activeChipId={categoryId}
+        onChipChange={setCategoryId}
+        resultLabel={searchResultLabel}
+      />
+
+      <section aria-label="Belegliste" className="space-y-6">
+        {invoices.length === 0 ? (
+          <AutomotiveEmptyPanel>
+            Noch keine Rechnungen. Scanne deinen ersten Beleg
+            {canWrite ? (
+              <>
+                {" "}
+                oder{" "}
+                <PressableLink
+                  href={manualUploadHref}
+                  className={cn("font-medium", IOS_LINK)}
+                >
+                  lade einen Beleg hoch
+                </PressableLink>
+                .
+              </>
+            ) : (
+              "."
+            )}
+          </AutomotiveEmptyPanel>
+        ) : visible.length === 0 ? (
+          <AutomotiveEmptyPanel>
+            Keine Treffer für diese Suche / Filter.
+          </AutomotiveEmptyPanel>
+        ) : (
+          groupedVisible.map(({ monthKey, items: monthDocs }) => (
+            <div key={monthKey}>
+              <AutomotiveSectionLabel>
+                {formatIsoMonthKeyLabel(monthKey)}
+              </AutomotiveSectionLabel>
+              <AutomotiveList
+                aria-label={`Belege ${formatIsoMonthKeyLabel(monthKey)}`}
+              >
+                {monthDocs.map((doc) => (
+                  <InvoiceListRow
+                    key={doc.id}
+                    document={doc}
+                    href={documentDetailHref(
+                      tagUuid,
+                      doc.id,
+                      vehicleSurfaceScope,
+                    )}
+                    highlighted={highlightId === doc.id}
+                  />
+                ))}
+              </AutomotiveList>
+            </div>
+          ))
+        )}
+      </section>
+
+      <VehicleDataDisclaimer />
+    </IOSListPage>
+  );
+}
+
+const CATEGORY_ICON_TONE: Record<InvoiceListCategory, IconBadgeTone> = {
+  repair: "amber",
+  service: "blue",
+  tuning: "purple",
+  other: "neutral",
+};
+
+function InvoiceListRow({
+  document,
+  href,
+  highlighted,
+}: {
+  document: Document;
+  href: string;
+  highlighted: boolean;
+}) {
+  const category = resolveInvoiceListCategory(document.category);
+  const vendor = document.vendor?.trim() || "Unbekannter Anbieter";
+  const issued = formatDocumentDateCompact(document.date);
+  const paymentBadge = resolveInvoicePaymentBadge(document);
+
+  return (
+    <AutomotiveListRow
+      className={highlighted ? "bg-emerald-500/10" : undefined}
+      href={href}
+      icon={Receipt}
+      iconTone={CATEGORY_ICON_TONE[category]}
+      title={displayDocumentTitle(document.title)}
+      amount={formatDocumentAmount(document.amount) ?? undefined}
+      meta={`${vendor} · ${issued} · ${INVOICE_LIST_CATEGORY_LABELS[category]}`}
+      badge={
+        paymentBadge ? (
+          <span className="inline-flex rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
+            {paymentBadge}
+          </span>
+        ) : undefined
+      }
+    />
   );
 }
 

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { ArrowLeft, Upload } from "lucide-react";
 import { InlineThinkingOrb } from "@/components/ui/transition-loading";
 
+import { ManualInvoiceEntryForm } from "@/components/documents/manual-invoice-entry-form";
 import { DocumentUpload } from "@/components/dashboard/DocumentUpload";
 import { GermanDateInput } from "@/components/documents/german-date-input";
 import {
@@ -42,7 +43,15 @@ interface DocumentUploadFormProps {
 }
 
 /** Manual PDF/file upload fallback (no cloud OCR). */
-export function DocumentUploadForm({
+export function DocumentUploadForm(props: DocumentUploadFormProps) {
+  const resolvedType = props.lockType ?? props.defaultType ?? "invoice";
+  if (resolvedType === "invoice") {
+    return <ManualInvoiceEntryForm {...props} />;
+  }
+  return <GenericDocumentUploadForm {...props} resolvedType={resolvedType} />;
+}
+
+function GenericDocumentUploadForm({
   vehicleId,
   tagUuid,
   vehicleLabel,
@@ -50,9 +59,10 @@ export function DocumentUploadForm({
   lockType,
   backHref,
   vehicleSurfaceScope,
-}: DocumentUploadFormProps) {
+  resolvedType,
+}: DocumentUploadFormProps & { resolvedType: DocumentType }) {
   const [title, setTitle] = useState("");
-  const [type, setType] = useState<DocumentType>(lockType ?? defaultType);
+  const [type, setType] = useState<DocumentType>(resolvedType);
   const resolvedBackHref =
     backHref ??
     documentsListHref(

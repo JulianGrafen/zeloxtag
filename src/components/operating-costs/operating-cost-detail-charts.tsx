@@ -3,7 +3,7 @@
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useMemo, useRef } from "react";
 
-import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
+import { InsetGroupedCard, InsetListRow, TelemetryValue } from "@/components/ui/ios";
 import { OPERATING_COST_CATEGORY_COLORS } from "@/lib/vehicles/operating-costs/category-colors";
 import type { OperatingCostChartData } from "@/lib/vehicles/operating-costs/chart-data";
 import {
@@ -17,12 +17,22 @@ import {
 import {
   OPERATING_COST_CATEGORIES,
   OPERATING_COST_CATEGORY_LABELS,
+  type OperatingCostCategory,
 } from "@/lib/vehicles/operating-costs/types";
+import { formatCurrencyEUR } from "@/utils/formatters";
+
+import {
+  OPERATING_COST_CATEGORY_ICONS,
+  OPERATING_COST_CATEGORY_TONES,
+} from "./operating-cost-category-visuals";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+const CHART_GRID_STROKE = "rgba(255,255,255,0.12)";
+const CHART_LABEL_CLASS = "fill-[#8E8E93] text-[8px] font-medium";
 
 type OperatingCostDetailChartsProps = {
   chart: OperatingCostChartData;
+  categoryMonthlyAverages: Record<OperatingCostCategory, number>;
 };
 
 function ChartLegend() {
@@ -31,7 +41,7 @@ function ChartLegend() {
       {OPERATING_COST_CATEGORIES.map((category) => (
         <li
           key={category}
-          className="flex items-center gap-1.5 text-[0.68rem] font-medium text-[color:var(--vd-muted)]"
+          className="flex items-center gap-1.5 text-[11px] font-medium text-[#8E8E93]"
         >
           <span
             className="h-2 w-2 shrink-0 rounded-full"
@@ -78,15 +88,14 @@ function MonthlyStackedChart({
               x2={STACKED_CHART_WIDTH - 28}
               y1={y}
               y2={y}
-              stroke="var(--vd-border)"
+              stroke={CHART_GRID_STROKE}
               strokeWidth={1}
-              opacity={0.6}
             />
             <text
               x={24}
               y={y + 3}
               textAnchor="end"
-              className="fill-[color:var(--vd-muted)] text-[8px] font-medium"
+              className={CHART_LABEL_CLASS}
             >
               {formatStackedChartAxisAmount(tick)} €
             </text>
@@ -124,7 +133,7 @@ function MonthlyStackedChart({
             x={column.x + column.width / 2}
             y={STACKED_CHART_HEIGHT - 8}
             textAnchor="middle"
-            className="fill-[color:var(--vd-muted)] text-[8px] font-medium"
+            className={CHART_LABEL_CLASS}
           >
             {column.label}
           </text>
@@ -172,77 +181,66 @@ function CategoryDonutChart({
         className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center"
         aria-hidden
       >
-        <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-          Gesamt
-        </p>
-        <p className="mt-0.5 font-[family-name:var(--font-display)] text-[1.15rem] font-semibold tabular-nums tracking-[-0.03em] text-[color:var(--vd-text)]">
-          {formatEur(chart.grandTotal)}
-        </p>
+        <p className="text-[11px] font-medium text-[#8E8E93]">Gesamt</p>
+        <TelemetryValue
+          value={formatCurrencyEUR(chart.grandTotal)}
+          className="mt-0.5 text-[17px] font-semibold"
+        />
       </div>
     </div>
   );
 }
 
-function CategoryBreakdownList({ chart }: { chart: OperatingCostChartData }) {
-  if (chart.categorySlices.length === 0) {
-    return (
-      <p className="text-center text-[0.82rem] text-[color:var(--vd-muted)]">
-        Noch keine Ausgaben im gewählten Zeitraum.
-      </p>
-    );
-  }
-
-  return (
-    <ul className="space-y-2.5">
-      {chart.categorySlices.map((slice) => (
-        <li
-          key={slice.category}
-          className="flex items-center justify-between gap-3 border-b border-[color:var(--vd-border)]/60 pb-2.5 last:border-0 last:pb-0"
-        >
-          <div className="flex min-w-0 items-center gap-2">
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{
-                backgroundColor: OPERATING_COST_CATEGORY_COLORS[slice.category],
-              }}
-              aria-hidden
-            />
-            <span className="truncate text-[0.88rem] font-medium text-[color:var(--vd-text)]">
-              {OPERATING_COST_CATEGORY_LABELS[slice.category]}
-            </span>
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="text-[0.88rem] font-semibold tabular-nums text-[color:var(--vd-text)]">
-              {formatEur(slice.amount)}
-            </p>
-            <p className="text-[0.72rem] tabular-nums text-[color:var(--vd-muted)]">
-              {Math.round(slice.share * 100)} %
-            </p>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
+function shareLabel(amount: number, grandTotal: number): string {
+  const share = grandTotal > 0 ? amount / grandTotal : 0;
+  return `${Math.round(share * 100).toLocaleString("de-DE")} %`;
 }
 
-export function OperatingCostDetailCharts({ chart }: OperatingCostDetailChartsProps) {
-  const sectionRef = useRef<HTMLElement>(null);
+function CategoryBreakdownRows({
+  chart,
+  categoryMonthlyAverages,
+}: OperatingCostDetailChartsProps) {
+  return OPERATING_COST_CATEGORIES.map((category) => {
+    const amount = chart.categoryTotals[category];
+    return (
+      <InsetListRow
+        key={category}
+        emphasis="data"
+        icon={OPERATING_COST_CATEGORY_ICONS[category]}
+        iconTone={OPERATING_COST_CATEGORY_TONES[category]}
+        label={OPERATING_COST_CATEGORY_LABELS[category]}
+        sublabel={
+          <span className="tabular-nums">
+            ø {formatCurrencyEUR(categoryMonthlyAverages[category])}/M ·{" "}
+            {shareLabel(amount, chart.grandTotal)}
+          </span>
+        }
+        value={formatCurrencyEUR(amount)}
+        valueVariant="numeric"
+      />
+    );
+  });
+}
+
+export function OperatingCostDetailCharts({
+  chart,
+  categoryMonthlyAverages,
+}: OperatingCostDetailChartsProps) {
+  const sectionRef = useRef<HTMLDivElement>(null);
   const inView = useInView(sectionRef, { once: true, margin: "-40px 0px" });
   const reduceMotion = useReducedMotion();
   const showFinal = reduceMotion ? true : inView;
   const empty = chart.grandTotal <= 0;
 
   return (
-    <section ref={sectionRef} className="space-y-4">
-      <div className="zt-feature-panel space-y-3 p-4">
-        <h2 className="text-[0.78rem] font-semibold text-[color:var(--vd-text)]">
-          Alle Fahrzeugkosten nach Monat
-        </h2>
-        <p className="text-[0.72rem] leading-snug text-[color:var(--vd-muted)]">
-          Letzte {chart.windowMonths} Monate · Tanken, Versicherung, Steuer & Sonstiges
-        </p>
+    <div ref={sectionRef} className="flex flex-col gap-6">
+      <InsetGroupedCard
+        header="Kosten nach Monat"
+        footer={`Letzte ${chart.windowMonths} Monate · Tanken, Versicherung, Steuer & Sonstiges`}
+        cardClassName="space-y-3 p-4"
+      >
         {empty ? (
-          <p className="py-8 text-center text-[0.82rem] text-[color:var(--vd-muted)]">
+          <p className="py-6 text-center text-[15px] text-[#8E8E93]">
             Sobald du Kosten erfasst hast, siehst du hier die Monatsverteilung.
           </p>
         ) : (
@@ -255,24 +253,30 @@ export function OperatingCostDetailCharts({ chart }: OperatingCostDetailChartsPr
             <ChartLegend />
           </>
         )}
-      </div>
+      </InsetGroupedCard>
 
-      <div className="zt-feature-panel space-y-4 p-4">
-        <h2 className="text-[0.78rem] font-semibold text-[color:var(--vd-text)]">
-          Kosten nach Kategorie
-        </h2>
-        <p className="text-[0.72rem] text-[color:var(--vd-muted)]">
-          Alle erfassten Ausgaben im Zeitraum
-        </p>
+      <InsetGroupedCard
+        header="Kosten nach Kategorie"
+        footer={
+          empty
+            ? "Noch keine Ausgaben im gewählten Zeitraum."
+            : "Alle erfassten Ausgaben im Zeitraum"
+        }
+      >
         {!empty ? (
-          <CategoryDonutChart
-            chart={chart}
-            showFinal={showFinal}
-            reduceMotion={!!reduceMotion}
-          />
+          <div className="px-4 pb-2 pt-4">
+            <CategoryDonutChart
+              chart={chart}
+              showFinal={showFinal}
+              reduceMotion={!!reduceMotion}
+            />
+          </div>
         ) : null}
-        <CategoryBreakdownList chart={chart} />
-      </div>
-    </section>
+        <CategoryBreakdownRows
+          chart={chart}
+          categoryMonthlyAverages={categoryMonthlyAverages}
+        />
+      </InsetGroupedCard>
+    </div>
   );
 }

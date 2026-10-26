@@ -88,4 +88,47 @@ describe("partitionShowcaseSelectableDocuments", () => {
     const { modifications } = partitionShowcaseSelectableDocuments([legacy]);
     expect(modifications.map((doc) => doc.id)).toEqual(["legacy-umbau"]);
   });
+
+  it("treats empty category string as Umbau for manual entries", () => {
+    const legacy = baseDoc({
+      id: "legacy-empty-cat",
+      category: "",
+      title: "Spoiler",
+    });
+
+    expect(isShowcaseModificationDocument(legacy)).toBe(true);
+  });
+
+  it("lists manual service entries with stored photos under modifications", () => {
+    const servicePhoto = baseDoc({
+      id: "service-photo",
+      title: "Felgen montiert",
+      category: "service",
+      file_url: "https://example.com/montage.jpg",
+    });
+
+    const { modifications, manualEntries } =
+      partitionShowcaseSelectableDocuments([servicePhoto]);
+
+    expect(modifications.map((doc) => doc.id)).toEqual(["service-photo"]);
+    expect(manualEntries).toHaveLength(0);
+  });
+
+  it("lists scanned tuning invoices with photos as modifications", () => {
+    const scanned = baseDoc({
+      id: "scan-tuning",
+      title: "KW V3",
+      invoice_number: "RE-100",
+      category: "tuning",
+      file_url: "https://example.com/rechnung.jpg",
+    });
+
+    expect(isShowcaseModificationDocument(scanned)).toBe(true);
+
+    const { modifications, invoices } =
+      partitionShowcaseSelectableDocuments([scanned]);
+
+    expect(modifications.map((doc) => doc.id)).toEqual(["scan-tuning"]);
+    expect(invoices).toHaveLength(0);
+  });
 });

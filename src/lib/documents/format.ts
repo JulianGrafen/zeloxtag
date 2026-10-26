@@ -7,6 +7,7 @@ import {
   formatIsoDateCompact,
   formatMoney,
 } from "@/lib/i18n/formatters";
+import { restoreGermanUmlauts } from "@/lib/i18n/german-umlauts";
 import { defaultRegionalProfile } from "@/lib/i18n/regional-profile";
 import type { RegionalProfile } from "@/lib/i18n/types";
 
@@ -308,7 +309,8 @@ export function parseMileageKmInput(raw: string): number | null {
 
 /** Strip legacy OCR category prefixes like `[repair]` from stored titles. */
 export function displayDocumentTitle(title: string): string {
-  return title.replace(/^\[[a-z_]+\]\s*/i, "").trim() || title;
+  const withoutTag = title.replace(/^\[[a-z_]+\]\s*/i, "").trim() || title;
+  return restoreGermanUmlauts(withoutTag);
 }
 
 export function filterDocumentsByType(

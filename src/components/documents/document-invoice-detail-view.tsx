@@ -1,29 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ArrowLeft,
-  Building2,
-  Calendar,
-  CheckCircle2,
-  FileText,
-  Gauge,
-  ImagePlus,
-  Pencil,
-  Share2,
-  Tag,
-  Trash2,
-} from "lucide-react";
+  useCallback,
+  useEffect,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CheckCircle2, ChevronLeft, ImagePlus, Trash2 } from "lucide-react";
 
 import { deleteDocument } from "@/actions/delete-document";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 
-import {
-  DocumentDetailHero,
-  DocumentDetailHeroAmount,
-  DocumentDetailHeroChip,
-} from "@/components/documents/document-detail-hero";
 import { ApprovalFieldsSection } from "@/components/documents/approval-fields-section";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { EditableTuevHuSection } from "@/components/documents/editable-tuev-hu-section";
@@ -39,20 +28,26 @@ import { displayInvoiceReviewCategoryLabel } from "@/lib/documents/invoice-revie
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { InvoiceAddPhotosSheet } from "@/components/documents/invoice-add-photos-sheet";
 import { InvoiceDetailEditPickerSheet } from "@/components/documents/invoice-detail-edit-picker-sheet";
-import {
-  documentDetailMetadataKickerClassName,
-  documentDetailMetadataListClassName,
-  documentDetailMetadataRowClassName,
-  documentDetailMetadataValueClassName,
-} from "@/components/documents/document-detail-metadata-styles";
 import { DocumentOriginalPreview } from "@/components/documents/document-original-preview";
+import {
+  ReceiptActionBar,
+  ReceiptHero,
+  ReceiptLineItemsCard,
+  ReceiptMetadataCard,
+  type ReceiptMetadataField,
+} from "@/components/documents/receipt";
 import { TuevDefectsSection } from "@/components/documents/tuev-defects-section";
-import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
+import {
+  IOS_CARD,
+  IOS_PILL,
+  IOSScreen,
+  InsetGroupedCard,
+  InsetListRow,
+} from "@/components/ui/ios";
 import {
   PressableButton,
   PressableLink,
 } from "@/components/vehicle-dashboard/Pressable";
-import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import {
   displayDocumentTitle,
   formatMileageKmLabel,
@@ -65,8 +60,12 @@ import {
   manualEntryEditPath,
 } from "@/lib/documents/manual-entries";
 import {
+  documentMediaKind,
   isViewableDocumentUrl,
+  resolveDocumentViewUrl,
 } from "@/lib/documents/viewable-url";
+import { cn } from "@/lib/utils";
+import { formatDateDE, restoreGermanUmlauts } from "@/utils/formatters";
 import { vehicleSurfaceScopeFromContext } from "@/lib/vehicle-surface/paths";
 import {
   documentDeleteButtonLabel,
@@ -195,7 +194,6 @@ export function DocumentInvoiceDetailView({
   const canEditInvoice =
     canEdit && document.type === "invoice" && Boolean(document.vehicle_id);
   const useCentralEdit = canEditInvoice;
-  const canEditVendor = canEditInvoice;
   const canEditPositions = canEditInvoice;
   const canDeleteInvoice =
     canDelete &&
@@ -236,6 +234,14 @@ export function DocumentInvoiceDetailView({
   const fotodokuTitle = fotodokuSectionTitle(isManual, title, fileName);
   const issuedLabel = formatDocumentDateCompact(documentDate);
   const scannedLabel = formatDocumentDateCompact(document.created_at);
+  const pageMetaLabel = [
+    document.page_count && document.page_count > 1
+      ? `${document.page_count} Seiten`
+      : null,
+    scannedLabel ? `${isManual ? "Erstellt" : "Gescannt"} ${scannedLabel}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const mileageLabel =
     mileageKm !== null ? formatMileageKmLabel(mileageKm) : null;
   const vendor = vendorLabel.trim() || title;
@@ -244,7 +250,6 @@ export function DocumentInvoiceDetailView({
   );
   const invoiceNumberLabel = displayManualInvoiceNumber(document.invoice_number);
   const showBelegnr = Boolean(invoiceNumberLabel);
-  const showDateField = canEditInvoice || Boolean(issuedLabel);
   const showMileageEditable = isManual && canEditInvoice;
   const showMileageReadOnly = !showMileageEditable && Boolean(mileageLabel);
 
@@ -267,6 +272,23 @@ export function DocumentInvoiceDetailView({
       setEditPulse((pulse) => pulse + 1);
     });
   }
+
+  const openCentralEdit = useCallback(() => {
+    setEditPickerOpen(true);
+  }, []);
+
+  const openManualEdit = useCallback(() => {
+    router.push(
+      manualEntryEditPath(surfaceScope, document.id, document.category),
+    );
+  }, [document.category, document.id, router, surfaceScope]);
+
+  const showNavEdit = useCentralEdit || (canEdit && isManual);
+  const handleNavEdit = useCentralEdit
+    ? openCentralEdit
+    : canEdit && isManual
+      ? openManualEdit
+      : undefined;
 
   async function handleShare() {
     const shareUrl =
@@ -292,68 +314,126 @@ export function DocumentInvoiceDetailView({
     }
   }
 
+  const originalHref = isViewableDocumentUrl(document.file_url)
+    ? resolveDocumentViewUrl(document.file_url)
+    : null;
+  const originalLabel = isManual
+    ? "Fotos ansehen"
+    : documentMediaKind(document.file_url) === "pdf"
+      ? "Original-PDF öffnen"
+      : "Original-Beleg öffnen";
+  const showCategory = !isTuevDocument && document.type === "invoice";
+
+  const editRowProps = {
+    documentId: document.id,
+    vehicleId: document.vehicle_id,
+    tagUuid,
+    hideEditTrigger: useCentralEdit,
+    editRequest,
+    editPulse,
+    onEditRequestConsumed: handleEditRequestConsumed,
+    layout: "inset-row",
+  } as const;
+
+  const editableRows: Partial<Record<ReceiptMetadataField, ReactNode>> =
+    canEditInvoice
+      ? {
+          vendor: (
+            <EditableVendorSection
+              {...editRowProps}
+              vendor={document.vendor}
+              label={isManual ? "Ausführender" : "Werkstatt"}
+              placeholder={
+                isManual ? "z. B. selbst, Werkstatt Name" : "z. B. Auto Meister GmbH"
+              }
+              onSaved={(nextVendor) => setVendorLabel(nextVendor?.trim() || title)}
+              sectionId={INVOICE_DETAIL_EDIT_ANCHORS.vendor}
+            />
+          ),
+          category: showCategory ? (
+            <EditableInvoiceCategorySection
+              {...editRowProps}
+              category={documentCategory}
+              onSaved={setDocumentCategory}
+              sectionId={INVOICE_DETAIL_EDIT_ANCHORS.category}
+            />
+          ) : undefined,
+          date: (
+            <EditableDocumentDateSection
+              {...editRowProps}
+              date={documentDate}
+              onSaved={setDocumentDate}
+              sectionId={INVOICE_DETAIL_EDIT_ANCHORS.date}
+            />
+          ),
+          mileage: showMileageEditable ? (
+            <EditableDocumentMileageSection
+              {...editRowProps}
+              label="Kilometerstand"
+              mileageKm={mileageKm}
+              onSaved={setMileageKm}
+              sectionId={INVOICE_DETAIL_EDIT_ANCHORS.mileage}
+            />
+          ) : undefined,
+          amount: isManual ? (
+            <EditableDocumentAmountSection
+              {...editRowProps}
+              amount={documentAmount}
+              onSaved={setDocumentAmount}
+              sectionId={INVOICE_DETAIL_EDIT_ANCHORS.amount}
+            />
+          ) : undefined,
+        }
+      : {};
+
   return (
-    <div className="vd-root relative min-h-dvh overflow-x-hidden">
-      <div
-        aria-hidden
-        className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
-      />
+    <IOSScreen>
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 pb-32 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5">
+        <div className="flex items-center justify-between gap-3">
+          <PressableLink
+            href={resolvedBack}
+            variant="pill"
+            className="-ml-1 inline-flex w-fit min-w-0 items-center gap-0.5 py-1 text-[17px] text-[#0A84FF]"
+          >
+            <ChevronLeft className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+            Belege
+          </PressableLink>
+          {showNavEdit && handleNavEdit ? (
+            <PressableButton
+              type="button"
+              variant="button"
+              onClick={handleNavEdit}
+              className="shrink-0 py-1 text-[17px] font-semibold text-[#0A84FF]"
+            >
+              Bearbeiten
+            </PressableButton>
+          ) : null}
+        </div>
 
-      <div className="vd-anim-stack relative z-10 mx-auto flex w-full max-w-lg flex-col gap-4 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-        <PressableLink
-          href={resolvedBack}
-          variant="pill"
-          className="inline-flex w-fit items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Zurück zur Liste
-        </PressableLink>
-
-        <DocumentDetailHero
+        <ReceiptHero
           title={
             canEditInvoice ? (
               <EditableTitleSection
-                documentId={document.id}
-                vehicleId={document.vehicle_id}
-                tagUuid={tagUuid}
+                {...editRowProps}
+                layout="default"
                 title={title}
                 onSaved={setTitle}
-                hideEditTrigger={useCentralEdit}
-                editRequest={editRequest}
-                editPulse={editPulse}
-                onEditRequestConsumed={handleEditRequestConsumed}
                 sectionId={INVOICE_DETAIL_EDIT_ANCHORS.title}
               />
             ) : (
               title
             )
           }
-          trailing={
-            isManual && canEditInvoice ? (
-              <EditableDocumentAmountSection
-                documentId={document.id}
-                vehicleId={document.vehicle_id}
-                tagUuid={tagUuid}
-                amount={documentAmount}
-                onSaved={setDocumentAmount}
-                hideEditTrigger={useCentralEdit}
-                editRequest={editRequest}
-                editPulse={editPulse}
-                onEditRequestConsumed={handleEditRequestConsumed}
-                sectionId={INVOICE_DETAIL_EDIT_ANCHORS.amount}
-              />
-            ) : documentAmount !== null ? (
-              <DocumentDetailHeroAmount>
-                {formatEur(documentAmount)}
-              </DocumentDetailHeroAmount>
-            ) : undefined
-          }
-          chips={
+          amount={documentAmount}
+          categoryLabel={showCategory ? categoryLabel : isTuevDocument ? "TÜV" : null}
+          vendor={document.type === "invoice" ? vendor : null}
+          dateLabel={formatDateDE(documentDate)}
+          status={
             paymentBadge ? (
-              <DocumentDetailHeroChip className="bg-emerald-500/10 text-emerald-700">
+              <span className={cn(IOS_PILL, "bg-emerald-500/15 text-emerald-400")}>
                 <CheckCircle2 className="h-3 w-3" aria-hidden />
                 {paymentBadge}
-              </DocumentDetailHeroChip>
+              </span>
             ) : undefined
           }
         />
@@ -373,163 +453,17 @@ export function DocumentInvoiceDetailView({
           />
         ) : null}
 
-        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-          <div className={documentDetailMetadataListClassName}>
-            {canEditVendor ? (
-              <EditableVendorSection
-                documentId={document.id}
-                vehicleId={document.vehicle_id}
-                tagUuid={tagUuid}
-                vendor={document.vendor}
-                label={isManual ? "Werkstatt / Ausführender" : "Werkstatt"}
-                placeholder={
-                  isManual
-                    ? "z. B. selbst, Werkstatt Name"
-                    : "z. B. Auto Meister GmbH"
-                }
-                onSaved={(nextVendor) =>
-                  setVendorLabel(nextVendor?.trim() || title)
-                }
-                hideEditTrigger={useCentralEdit}
-                editRequest={editRequest}
-                editPulse={editPulse}
-                onEditRequestConsumed={handleEditRequestConsumed}
-                sectionId={INVOICE_DETAIL_EDIT_ANCHORS.vendor}
-                embedded
-              />
-            ) : document.type === "invoice" ? (
-              <div className={documentDetailMetadataRowClassName}>
-                <p className={documentDetailMetadataKickerClassName}>
-                  {isManual ? "Werkstatt / Ausführender" : "Werkstatt"}
-                </p>
-                <p
-                  className={`mt-1.5 flex items-center gap-2 ${documentDetailMetadataValueClassName}`}
-                >
-                  <Building2
-                    className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
-                    aria-hidden
-                  />
-                  {vendor}
-                </p>
-              </div>
-            ) : null}
-
-            {!isTuevDocument && document.type === "invoice" ? (
-              canEditInvoice ? (
-                <EditableInvoiceCategorySection
-                  documentId={document.id}
-                  vehicleId={document.vehicle_id}
-                  tagUuid={tagUuid}
-                  category={documentCategory}
-                  onSaved={setDocumentCategory}
-                  hideEditTrigger={useCentralEdit}
-                  editRequest={editRequest}
-                  editPulse={editPulse}
-                  onEditRequestConsumed={handleEditRequestConsumed}
-                  sectionId={INVOICE_DETAIL_EDIT_ANCHORS.category}
-                  embedded
-                />
-              ) : (
-                <div className={documentDetailMetadataRowClassName}>
-                  <p className={documentDetailMetadataKickerClassName}>
-                    Kategorie
-                  </p>
-                  <p
-                    className={`mt-1.5 flex items-center gap-2 ${documentDetailMetadataValueClassName}`}
-                  >
-                    <Tag
-                      className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
-                      aria-hidden
-                    />
-                    {categoryLabel}
-                  </p>
-                </div>
-              )
-            ) : null}
-
-            {showBelegnr ? (
-              <div className={documentDetailMetadataRowClassName}>
-                <p className={documentDetailMetadataKickerClassName}>Belegnr.</p>
-                <p
-                  className={`mt-1.5 tabular-nums ${documentDetailMetadataValueClassName}`}
-                >
-                  {invoiceNumberLabel}
-                </p>
-              </div>
-            ) : null}
-
-            {showDateField || showMileageEditable || showMileageReadOnly ? (
-              <div
-                className={`${documentDetailMetadataRowClassName} grid grid-cols-2 gap-x-4 gap-y-3`}
-              >
-                {showDateField ? (
-                  <div className="min-w-0">
-                    {canEditInvoice ? (
-                      <EditableDocumentDateSection
-                        documentId={document.id}
-                        vehicleId={document.vehicle_id}
-                        tagUuid={tagUuid}
-                        date={documentDate}
-                        onSaved={setDocumentDate}
-                        hideEditTrigger={useCentralEdit}
-                        editRequest={editRequest}
-                        editPulse={editPulse}
-                        onEditRequestConsumed={handleEditRequestConsumed}
-                        sectionId={INVOICE_DETAIL_EDIT_ANCHORS.date}
-                        embedded
-                      />
-                    ) : (
-                      <>
-                        <p className={documentDetailMetadataKickerClassName}>
-                          Datum
-                        </p>
-                        <p
-                          className={`mt-1.5 flex items-center gap-2 ${documentDetailMetadataValueClassName}`}
-                        >
-                          <Calendar
-                            className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
-                            aria-hidden
-                          />
-                          {issuedLabel}
-                        </p>
-                      </>
-                    )}
-                  </div>
-                ) : null}
-                {showMileageEditable ? (
-                  <div className="min-w-0">
-                    <EditableDocumentMileageSection
-                      documentId={document.id}
-                      vehicleId={document.vehicle_id}
-                      tagUuid={tagUuid}
-                      mileageKm={mileageKm}
-                      onSaved={setMileageKm}
-                      hideEditTrigger={useCentralEdit}
-                      editRequest={editRequest}
-                      editPulse={editPulse}
-                      onEditRequestConsumed={handleEditRequestConsumed}
-                      sectionId={INVOICE_DETAIL_EDIT_ANCHORS.mileage}
-                      embedded
-                    />
-                  </div>
-                ) : showMileageReadOnly ? (
-                  <div className="min-w-0">
-                    <p className={documentDetailMetadataKickerClassName}>KM</p>
-                    <p
-                      className={`mt-1.5 flex items-center gap-2 tabular-nums ${documentDetailMetadataValueClassName}`}
-                    >
-                      <Gauge
-                        className="h-4 w-4 shrink-0 text-[color:var(--vd-muted)]"
-                        aria-hidden
-                      />
-                      {mileageLabel}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </section>
+        <ReceiptMetadataCard
+          metadata={{
+            vendor: document.type === "invoice" ? vendor : null,
+            vendorLabel: isManual ? "Ausführender" : "Werkstatt",
+            category: showCategory ? categoryLabel : null,
+            date: documentDate,
+            mileageKm: showMileageReadOnly || showMileageEditable ? mileageKm : null,
+            invoiceNumber: showBelegnr ? invoiceNumberLabel : null,
+          }}
+          editableRows={editableRows}
+        />
 
         {canEdit && tuevApprovalFields ? (
           <EditableTuevDefectsSection
@@ -561,45 +495,13 @@ export function DocumentInvoiceDetailView({
             editPulse={editPulse}
             onEditRequestConsumed={handleEditRequestConsumed}
             sectionId={INVOICE_DETAIL_EDIT_ANCHORS.lineItems}
-            shellClassName="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5"
+            shellClassName={cn(IOS_CARD, "p-4")}
+            renderReadView={(items) => (
+              <ReceiptLineItemsCard items={items} total={documentAmount} />
+            )}
           />
         ) : !isTuevDocument && lineItems.length > 0 ? (
-          <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-            <h2 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-              Positionen
-            </h2>
-            <ul className="overflow-hidden rounded-xl border border-[color:var(--vd-border)]">
-              {lineItems.map((item, index) => (
-                <li
-                  key={`${item.label}-${index}`}
-                  className={[
-                    "flex items-start justify-between gap-3 px-3 py-2.5 text-[0.88rem]",
-                    index % 2 === 0
-                      ? "bg-[color:var(--vd-surface)]"
-                      : "bg-[color:var(--vd-surface-elevated)]/80",
-                    index > 0 ? "border-t border-[color:var(--vd-border)]/60" : "",
-                  ].join(" ")}
-                >
-                  <span className="min-w-0 flex-1 whitespace-pre-line text-[color:var(--vd-text)]">
-                    {item.label}
-                  </span>
-                  <span className="min-w-[6.75rem] shrink-0 text-right tabular-nums text-[color:var(--vd-text)]">
-                    {formatEur(item.amount)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {document.amount !== null ? (
-              <div className="mt-5 flex items-center justify-between border-t border-[color:var(--vd-border)] pt-3">
-                <span className="text-[0.95rem] font-bold tracking-[-0.02em] text-[color:var(--vd-text)]">
-                  Gesamt
-                </span>
-                <span className="min-w-[6.75rem] text-right text-[1.05rem] font-bold tracking-[-0.02em] tabular-nums text-[color:var(--vd-text)]">
-                  {formatEur(document.amount)}
-                </span>
-              </div>
-            ) : null}
-          </section>
+          <ReceiptLineItemsCard items={lineItems} total={documentAmount} />
         ) : null}
 
         {isManual && canEditInvoice ? (
@@ -616,60 +518,45 @@ export function DocumentInvoiceDetailView({
             sectionId={INVOICE_DETAIL_EDIT_ANCHORS.notes}
           />
         ) : isManual && documentNotes?.trim() ? (
-          <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-            <h2 className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-              Notizen
-            </h2>
-            <p className="whitespace-pre-line text-[0.9rem] text-[color:var(--vd-text)]">
-              {documentNotes.trim()}
+          <InsetGroupedCard header="Notizen">
+            <p className="whitespace-pre-line px-4 py-3 text-[15px] leading-snug text-white">
+              {restoreGermanUmlauts(documentNotes.trim())}
             </p>
-          </section>
+          </InsetGroupedCard>
         ) : null}
 
         {showSavedPhotoHint && canAddPhotos ? (
-          <div className="rounded-2xl border border-[color:var(--vd-accent)]/35 bg-[color:var(--vd-surface-elevated)] p-4">
-            <p className="text-[0.88rem] font-medium text-[color:var(--vd-text)]">
-              Beleg gespeichert
-            </p>
-            <p className="mt-1 text-[0.8rem] leading-snug text-[color:var(--vd-muted)]">
-              Du kannst jetzt weitere Fotos oder Seiten anhängen — z. B.
-              Quittungen, Detailaufnahmen oder Folgeseiten.
-            </p>
-            <PressableButton
-              type="button"
-              variant="button"
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 px-4 py-3 text-[0.88rem] font-semibold text-white"
-              onClick={() => {
-                setShowSavedPhotoHint(false);
-                setAddPhotosOpen(true);
-              }}
-            >
-              <ImagePlus className="h-4 w-4" aria-hidden />
-              Bilder hinzufügen
-            </PressableButton>
-          </div>
+          <InsetGroupedCard header="Beleg gespeichert">
+            <div className="space-y-3 px-4 py-3">
+              <p className="text-sm leading-snug text-[#8E8E93]">
+                Du kannst jetzt weitere Fotos oder Seiten anhängen — z. B.
+                Quittungen, Detailaufnahmen oder Folgeseiten.
+              </p>
+              <PressableButton
+                type="button"
+                variant="button"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-semibold text-black"
+                onClick={() => {
+                  setShowSavedPhotoHint(false);
+                  setAddPhotosOpen(true);
+                }}
+              >
+                <ImagePlus className="h-4 w-4" aria-hidden />
+                Bilder hinzufügen
+              </PressableButton>
+            </div>
+          </InsetGroupedCard>
         ) : null}
 
-        <section className="zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)] sm:p-5">
-          <div className="mb-3 flex items-start justify-between gap-3">
+        <InsetGroupedCard header={isManual ? "Fotodoku" : "Original"}>
+          <div className="flex items-start justify-between gap-3 px-4 pb-2 pt-3">
             <div className="min-w-0">
-              <h2 className="mb-1 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[color:var(--vd-muted)]">
-                {isManual ? "Fotodoku" : "Original"}
-              </h2>
-              <p className="truncate text-[0.95rem] font-semibold tracking-[-0.02em] text-[color:var(--vd-text)]">
+              <p className="truncate text-[15px] font-medium text-white">
                 {fotodokuTitle}
               </p>
-              {(document.page_count && document.page_count > 1) || scannedLabel ? (
-                <p className="mt-0.5 text-[0.75rem] leading-snug text-[color:var(--vd-muted)]">
-                  {document.page_count && document.page_count > 1
-                    ? `${document.page_count} Seiten`
-                    : null}
-                  {document.page_count && document.page_count > 1 && scannedLabel
-                    ? " · "
-                    : null}
-                  {scannedLabel
-                    ? `${isManual ? "Erstellt" : "Gescannt"} ${scannedLabel}`
-                    : null}
+              {pageMetaLabel ? (
+                <p className="mt-0.5 text-xs tabular-nums text-[#8E8E93]">
+                  {pageMetaLabel}
                 </p>
               ) : null}
             </div>
@@ -677,7 +564,7 @@ export function DocumentInvoiceDetailView({
               <PressableButton
                 type="button"
                 variant="button"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-3 py-1.5 text-[0.72rem] font-semibold text-[color:var(--vd-text)]"
+                className={cn(IOS_PILL, "shrink-0 text-[#0A84FF]")}
                 onClick={() => setAddPhotosOpen(true)}
               >
                 <ImagePlus className="h-3.5 w-3.5" aria-hidden />
@@ -685,38 +572,40 @@ export function DocumentInvoiceDetailView({
               </PressableButton>
             ) : null}
           </div>
-          <DocumentOriginalPreview
-            documentId={document.id}
-            fileUrl={document.file_url}
-            title={title}
-            isManual={isManual}
-            pageCount={document.page_count}
-          />
-        </section>
+          <div className="px-3 pb-3">
+            <DocumentOriginalPreview
+              documentId={document.id}
+              fileUrl={document.file_url}
+              title={title}
+              isManual={isManual}
+              pageCount={document.page_count}
+            />
+          </div>
+        </InsetGroupedCard>
 
         {canDeleteInvoice ? (
-          <div className="space-y-2">
-            <PressableButton
-              type="button"
-              variant="button"
+          <InsetGroupedCard
+            footer={
+              deleteError ? (
+                <span role="alert" className="text-[#FF453A]">
+                  {deleteError}
+                </span>
+              ) : undefined
+            }
+          >
+            <InsetListRow
+              icon={Trash2}
+              iconTone="red"
+              label={
+                deleting
+                  ? "Wird gelöscht…"
+                  : documentDeleteButtonLabel(deleteDocumentType)
+              }
+              destructive
               disabled={deleting}
-              onClick={handleDeleteInvoice}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-600 bg-red-600 px-4 py-3.5 text-[0.88rem] font-semibold text-white disabled:opacity-50"
-            >
-              <Trash2 className="h-4 w-4" aria-hidden />
-              {deleting
-                ? "Wird gelöscht…"
-                : documentDeleteButtonLabel(deleteDocumentType)}
-            </PressableButton>
-            {deleteError ? (
-              <p
-                role="alert"
-                className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
-              >
-                {deleteError}
-              </p>
-            ) : null}
-          </div>
+              onPress={handleDeleteInvoice}
+            />
+          </InsetGroupedCard>
         ) : null}
 
         <VehicleDataDisclaimer />
@@ -748,36 +637,20 @@ export function DocumentInvoiceDetailView({
         title={title}
       />
 
-      {!editPickerOpen ? (
-      <FixedBottomActionBar>
-        <div className="flex gap-2">
-          {useCentralEdit ? (
-            <PressableButton
-              type="button"
-              variant="button"
-              onClick={() => setEditPickerOpen(true)}
-              className="claim-cta inline-flex flex-1 items-center justify-center gap-2"
-            >
-              <Pencil className="h-4 w-4" aria-hidden />
-              Bearbeiten
-            </PressableButton>
-          ) : null}
-          <PressableButton
-            type="button"
-            variant="button"
-            onClick={() => {
-              void handleShare();
-            }}
-            className={`inline-flex items-center justify-center gap-2 zt-feature-panel px-4 py-3.5 text-[0.88rem] font-semibold text-[color:var(--vd-text)] shadow-[var(--vd-shadow)] ${
-              useCentralEdit ? "flex-1" : "w-full"
-            }`}
-          >
-            <Share2 className="h-4 w-4" aria-hidden />
-            Teilen
-          </PressableButton>
-        </div>
-      </FixedBottomActionBar>
-      ) : null}
-    </div>
+      <ReceiptActionBar
+        originalHref={originalHref}
+        originalLabel={originalLabel}
+        onShare={() => {
+          void handleShare();
+        }}
+        onEdit={
+          useCentralEdit
+            ? openCentralEdit
+            : canEdit && isManual
+              ? openManualEdit
+              : undefined
+        }
+      />
+    </IOSScreen>
   );
 }

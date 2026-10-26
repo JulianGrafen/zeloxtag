@@ -15,6 +15,10 @@ import {
   documentDetailMetadataKickerClassName,
   documentDetailMetadataValueClassName,
 } from "@/components/documents/document-detail-metadata-styles";
+import {
+  EditableInsetRowShell,
+  type EditableSectionLayout,
+} from "@/components/documents/editable-inset-row-shell";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +37,7 @@ type EditableDocumentMileageSectionProps = {
   onEditRequestConsumed?: () => void;
   sectionId?: string;
   embedded?: boolean;
+  layout?: EditableSectionLayout;
 };
 
 export function EditableDocumentMileageSection({
@@ -48,6 +53,7 @@ export function EditableDocumentMileageSection({
   onEditRequestConsumed,
   sectionId,
   embedded = false,
+  layout = "default",
 }: EditableDocumentMileageSectionProps) {
   const router = useRouter();
   const storedKm = mileageKm;
@@ -100,6 +106,33 @@ export function EditableDocumentMileageSection({
 
   const displayLabel =
     displayKm !== null ? formatMileageKmLabel(displayKm) : "—";
+
+  if (layout === "inset-row") {
+    return (
+      <EditableInsetRowShell
+        sectionId={sectionId}
+        label={label}
+        icon={Gauge}
+        iconTone="green"
+        value={displayLabel}
+        valueVariant="numeric"
+        editing={editing}
+        pending={pending}
+        error={error}
+        onEdit={hideEditTrigger ? undefined : () => setEditing(true)}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        editor={
+          <MileageKmInput
+            id={`editable-mileage-${documentId}`}
+            variant="inset"
+            value={draft}
+            onChange={setDraft}
+          />
+        }
+      />
+    );
+  }
 
   return (
     <div id={sectionId} className="scroll-mt-24">

@@ -5,15 +5,14 @@ import { useMemo, useState } from "react";
 import { ZeloxBrandFadeBanner } from "@/components/brand/zelox-brand-fade-banner";
 import { VehicleDataDisclaimer } from "@/components/documents/vehicle-data-disclaimer";
 import { ScanContent } from "@/components/layout/scan-content";
+import { IOS_SCREEN_CLASS, IOS_SECTION_HEADER } from "@/components/ui/ios";
 import { cn } from "@/lib/utils";
 
 import { buildDefaultTiles } from "./buildDefaultTiles";
-import { DashboardQuickAccessBar } from "./dashboard-quick-access-bar";
 import {
   DashboardTabSwitch,
   type DashboardTabId,
 } from "./dashboard-tab-switch";
-import { dashboardMenuKickerClassName } from "./dashboard-menu-styles";
 import { partitionDashboardTiles } from "./dashboard-tile-layout";
 import { DashboardTileGrid } from "./DashboardTileGrid";
 import { DashboardTabPanelTransition } from "./dashboard-tab-panel-transition";
@@ -23,7 +22,6 @@ import { VehicleDashboardHeader } from "./VehicleDashboardHeader";
 
 export function VehicleDashboard({
   data,
-  quickAccessItems,
   timelineEvents = [],
   documents = [],
   resolveDocumentHref,
@@ -47,8 +45,50 @@ export function VehicleDashboard({
   const showChronik =
     Boolean(resolveDocumentHref) && timelineEvents !== undefined;
 
+  const overviewPanel = (
+    <section
+      id="dashboard-panel-overview"
+      role="tabpanel"
+      aria-labelledby="dashboard-tab-overview"
+      aria-label="Fahrzeugmenü"
+      className="vd-anim-header flex min-h-0 flex-col gap-2 [animation-delay:0.12s]"
+      data-tour="tile-grid"
+    >
+      {primary.length > 0 ? (
+        <DashboardTileGrid
+          tiles={primary}
+          density="compact"
+          onTileClick={onTileClick}
+          className="shrink-0"
+        />
+      ) : null}
+
+      {secondary.length > 0 ? (
+        <div className="flex flex-col pt-4">
+          <h3 className={IOS_SECTION_HEADER}>Weitere</h3>
+          <div className="flex flex-col gap-3">
+            <DashboardTileGrid
+              tiles={secondary}
+              density="comfortable"
+              onTileClick={onTileClick}
+            />
+            {extraTiles}
+          </div>
+        </div>
+      ) : (
+        extraTiles
+      )}
+    </section>
+  );
+
   return (
-    <ScanContent className={cn("min-w-0 gap-0 overflow-x-clip px-0 pt-0", className)}>
+    <ScanContent
+      className={cn(
+        IOS_SCREEN_CLASS,
+        "min-h-0 min-w-0 gap-0 overflow-x-clip px-0 pt-0",
+        className,
+      )}
+    >
       {!hideBrandBanner ? (
         <>
           <div className="zelox-brand-banner-bleed zelox-brand-banner-bleed--tight pointer-events-none -mt-[max(1.25rem,env(safe-area-inset-top))]">
@@ -75,10 +115,6 @@ export function VehicleDashboard({
             onSilhouetteProxyLoad={onSilhouetteProxyLoad}
           />
 
-          {quickAccessItems && quickAccessItems.length > 0 ? (
-            <DashboardQuickAccessBar items={quickAccessItems} />
-          ) : null}
-
           {showChronik ? (
             <DashboardTabSwitch
               activeTab={activeTab}
@@ -92,46 +128,7 @@ export function VehicleDashboard({
         {showChronik ? (
           <DashboardTabPanelTransition
             activeTab={activeTab}
-            overview={
-              <section
-                id="dashboard-panel-overview"
-                role="tabpanel"
-                aria-labelledby="dashboard-tab-overview"
-                aria-label="Fahrzeugmenü"
-                className="vd-anim-header flex min-h-0 flex-col gap-2 [animation-delay:0.12s]"
-                data-tour="tile-grid"
-              >
-                {primary.length > 0 ? (
-                  <DashboardTileGrid
-                    tiles={primary}
-                    density="compact"
-                    onTileClick={onTileClick}
-                    className="shrink-0"
-                  />
-                ) : null}
-
-                {secondary.length > 0 ? (
-                  <div className="flex flex-col gap-2 pt-0.5">
-                    <h3
-                      className={cn(
-                        dashboardMenuKickerClassName,
-                        "px-0.5 text-[0.62rem] tracking-[0.2em] text-zinc-600",
-                      )}
-                    >
-                      Weitere
-                    </h3>
-                    <DashboardTileGrid
-                      tiles={secondary}
-                      density="comfortable"
-                      onTileClick={onTileClick}
-                    />
-                    {extraTiles}
-                  </div>
-                ) : (
-                  extraTiles
-                )}
-              </section>
-            }
+            overview={overviewPanel}
             timeline={
               <section
                 id="dashboard-panel-timeline"
@@ -150,44 +147,7 @@ export function VehicleDashboard({
             }
           />
         ) : (
-          <section
-            id="dashboard-panel-overview"
-            role="tabpanel"
-            aria-labelledby="dashboard-tab-overview"
-            aria-label="Fahrzeugmenü"
-            className="vd-anim-header flex min-h-0 flex-col gap-2 [animation-delay:0.12s]"
-            data-tour="tile-grid"
-          >
-            {primary.length > 0 ? (
-              <DashboardTileGrid
-                tiles={primary}
-                density="compact"
-                onTileClick={onTileClick}
-                className="shrink-0"
-              />
-            ) : null}
-
-            {secondary.length > 0 ? (
-              <div className="flex flex-col gap-2 pt-0.5">
-                <h3
-                  className={cn(
-                    dashboardMenuKickerClassName,
-                    "px-0.5 text-[0.62rem] tracking-[0.2em] text-zinc-600",
-                  )}
-                >
-                  Weitere
-                </h3>
-                <DashboardTileGrid
-                  tiles={secondary}
-                  density="comfortable"
-                  onTileClick={onTileClick}
-                />
-                {extraTiles}
-              </div>
-            ) : (
-              extraTiles
-            )}
-          </section>
+          overviewPanel
         )}
 
         <VehicleDataDisclaimer className="vd-anim-header shrink-0" />

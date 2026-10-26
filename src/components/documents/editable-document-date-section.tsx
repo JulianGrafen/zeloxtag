@@ -15,6 +15,10 @@ import {
   documentDetailMetadataKickerClassName,
   documentDetailMetadataValueClassName,
 } from "@/components/documents/document-detail-metadata-styles";
+import {
+  EditableInsetRowShell,
+  type EditableSectionLayout,
+} from "@/components/documents/editable-inset-row-shell";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +37,7 @@ type EditableDocumentDateSectionProps = {
   onEditRequestConsumed?: () => void;
   sectionId?: string;
   embedded?: boolean;
+  layout?: EditableSectionLayout;
 };
 
 export function EditableDocumentDateSection({
@@ -48,6 +53,7 @@ export function EditableDocumentDateSection({
   onEditRequestConsumed,
   sectionId,
   embedded = false,
+  layout = "default",
 }: EditableDocumentDateSectionProps) {
   const router = useRouter();
   const storedDate = date?.trim() || null;
@@ -101,6 +107,33 @@ export function EditableDocumentDateSection({
   const displayLabel = displayDate
     ? formatCompactGermanDate(displayDate) || displayDate
     : "—";
+
+  if (layout === "inset-row") {
+    return (
+      <EditableInsetRowShell
+        sectionId={sectionId}
+        label={label}
+        icon={Calendar}
+        iconTone="red"
+        value={displayLabel}
+        valueVariant="numeric"
+        editing={editing}
+        pending={pending}
+        error={error}
+        onEdit={hideEditTrigger ? undefined : () => setEditing(true)}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        editor={
+          <GermanDateInput
+            id={`editable-date-${documentId}`}
+            variant="inset"
+            value={draft}
+            onChange={(iso) => setDraft(iso)}
+          />
+        }
+      />
+    );
+  }
 
   return (
     <div id={sectionId} className="scroll-mt-24">

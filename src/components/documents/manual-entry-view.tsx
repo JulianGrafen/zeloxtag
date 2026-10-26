@@ -2,55 +2,31 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  Camera,
-  ImagePlus,
-  NotebookPen,
-  Plus,
-  Wrench,
-  X,
-} from "lucide-react";
-
 import { createManualVehicleEntry } from "@/actions/create-manual-entry";
 import { updateManualVehicleEntry } from "@/actions/update-manual-entry";
 import { EditableLineItemsSection } from "@/components/documents/editable-line-items-section";
 import { GermanDateInput } from "@/components/documents/german-date-input";
-import { MileageKmInput } from "@/components/documents/mileage-km-input";
-import { parseMileageKmInput } from "@/lib/documents/format";
 import { ListSearchControls } from "@/components/documents/list-search-controls";
-import { FixedBottomActionBar } from "@/components/vehicle-dashboard/fixed-bottom-action-bar";
+import { ManualEntryList } from "@/components/documents/manual-entry-list";
 import {
-  automotiveBackPillClassName,
-  AutomotiveEmptyPanel,
-  AutomotiveList,
-  AutomotiveListRow,
-  AutomotiveSectionLabel,
-} from "@/components/ui/automotive";
-import {
-  GarageField,
-  GarageFieldCell,
-  GarageFieldRow,
-  GarageInsetInput,
-  GarageInsetTextarea,
-} from "@/components/ui/garage-field";
-import { AutomotiveFeatureTitlePanel } from "@/components/ui/automotive";
-import {
-  PressableButton,
-  PressableLink,
-} from "@/components/vehicle-dashboard/Pressable";
+  MANUAL_ENTRY_CONTROL_CLASS,
+  ManualEntryBuildStoryCard,
+  ManualEntryCategoryCard,
+  ManualEntryFieldRow,
+  ManualEntryFormActions,
+  ManualEntryPhotosCard,
+  ManualEntrySwitchRow,
+} from "@/components/documents/manual-entry-form-sections";
+import { MileageKmInput } from "@/components/documents/mileage-km-input";
+import { GarageInsetInput, GarageInsetTextarea } from "@/components/ui/garage-field";
+import { DashboardScanFab } from "@/components/tags/dashboard-scan-fab";
+import { InsetGroupedCard, IOSListPage } from "@/components/ui/ios";
+import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { useDocumentCompression } from "@/hooks/useDocumentCompression";
-import {
-  displayDocumentTitle,
-  formatDocumentAmount,
-  formatDocumentDate,
-  formatDocumentDateCompact,
-} from "@/lib/documents/format";
-import { documentDetailHref } from "@/lib/vehicle-surface/documents-list-href";
+import { displayDocumentTitle, parseMileageKmInput } from "@/lib/documents/format";
 import { matchesSearchQuery } from "@/lib/documents/list-search";
 import {
   filterManualVehicleEntries,
-  MANUAL_ENTRY_CATEGORIES,
   MANUAL_ENTRY_CATEGORY_LABELS,
   MANUAL_ENTRY_MAX_PHOTOS,
   UMBAU_ENTRY_MAX_PHOTOS,
@@ -74,6 +50,8 @@ import {
 } from "@/lib/vehicle-surface/paths";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
+import { cn } from "@/lib/utils";
+import { formatCurrencyEUR } from "@/utils/formatters";
 import type { Document, DocumentLineItem } from "@/types/database";
 
 export type ManualListFilter = "all" | ManualEntryCategory | "photos";
@@ -122,18 +100,46 @@ async function attachEntryPhotosToFormData(
   formData.set("pageCount", String(pdf.pageCount));
 }
 
-const MANUAL_ENTRY_FIELD_LABEL =
-  "text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]";
-const MANUAL_ENTRY_CATEGORY_BTN =
-  "flex min-h-[var(--claim-field-min-height)] items-center rounded-[var(--vd-radius-field)] border px-3 text-left text-[0.85rem] font-semibold";
+function entryCountLabel(count: number): string {
+  return count === 1 ? "1 Eintrag" : `${count} Einträge`;
+}
+
+function listSubtitle(entries: Document[]): string {
+  const total = entries.reduce((sum, doc) => sum + (doc.amount ?? 0), 0);
+  const countLabel = entryCountLabel(entries.length);
+  return total > 0 ? `${countLabel} · ${formatCurrencyEUR(total)}` : countLabel;
+}
+
+function formHeading(isEditing: boolean, isUmbau: boolean): string {
+  if (isEditing) return isUmbau ? "Bild bearbeiten" : "Eintrag bearbeiten";
+  return isUmbau ? "Neues Bild" : "Neuer Eintrag";
+}
+
+function photosHint(isEditing: boolean, isUmbau: boolean): string {
+  if (isEditing) {
+    return isUmbau
+      ? `Bis zu ${UMBAU_ENTRY_MAX_PHOTOS} neue Bilder.`
+      : "Neu hinzufügen oder ersetzen.";
+  }
+  return isUmbau
+    ? `Mindestens 1, max. ${UMBAU_ENTRY_MAX_PHOTOS} Bilder.`
+    : `Optional, max. ${MANUAL_ENTRY_MAX_PHOTOS} Bilder.`;
+}
+
+function submitLabel(busy: boolean, isEditing: boolean, isUmbau: boolean): string {
+  if (busy) return "Speichern…";
+  if (isEditing) return "Änderungen speichern";
+  return isUmbau ? "Fotos speichern" : "Eintrag speichern";
+}
+
+const ALERT_CLASS = "rounded-xl bg-red-500/15 px-4 py-3 text-[15px] text-red-400";
+
 export function ManualEntryView({
   tagUuid,
   vehicleId,
-  vehicleLabel,
   documents,
   initialListFilter = "all",
   heading = "Umbauten",
-  subheading = "Umbauten, Wartung & Fotos",
   variant = "default",
 }: ManualEntryViewProps) {
   const router = useRouter();
@@ -547,457 +553,204 @@ export function ManualEntryView({
   }
 
   const busy = pending || isCompressing;
+  const alertMessage = error || compressError;
+
+  const scanHref = `${vehicleSurfaceHref(surfaceScope, "?scan=1&type=invoice")}`;
+
+  const scanFab = showForm ? null : (
+    <DashboardScanFab
+      tagUuid={tagUuid}
+      directAction="menu"
+      menuTitle={isUmbau ? "Umbau hinzufügen" : "Eintrag hinzufügen"}
+      hideFuelAction
+      scanHref={scanHref}
+      scanActionLabel="Rechnung scannen"
+      onManualEntry={() => setShowForm(true)}
+      manualActionLabel={isUmbau ? "Umbau mit Foto" : "Manuell eintragen"}
+      manualActionDescription={
+        isUmbau
+          ? "Fotos vom Umbau ohne KI-Scan"
+          : "Service, Umbau oder Notiz ohne Scan"
+      }
+    />
+  );
 
   return (
-    <div className="vd-root relative min-h-dvh overflow-x-hidden">
-      <div
-        aria-hidden
-        className="vd-atmosphere pointer-events-none absolute inset-0 z-0"
-      />
+    <IOSListPage
+      title={heading}
+      subtitle={showForm ? formHeading(isEditing, isUmbau) : listSubtitle(entries)}
+      backHref={vehicleSurfaceHref(surfaceScope)}
+      overlay={scanFab}
+    >
+      {!showForm ? (
+        <ListSearchControls
+          query={query}
+          onQueryChange={setQuery}
+          placeholder={isUmbau ? "Titel, Notiz…" : "Titel, Notiz, Werkstatt…"}
+          chips={listChips}
+          activeChipId={listFilter}
+          onChipChange={(id) => setListFilter(id as ManualListFilter)}
+          resultLabel={searchResultLabel}
+        />
+      ) : null}
 
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-        <header className="vd-anim-header space-y-4">
-          <PressableLink
-            href={`/v/${tagUuid}`}
-            variant="pill"
-            className={automotiveBackPillClassName}
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Dashboard
-          </PressableLink>
+      {alertMessage ? (
+        <p role="alert" className={ALERT_CLASS}>
+          {alertMessage}
+        </p>
+      ) : null}
 
-          <AutomotiveFeatureTitlePanel
-            icon={
-              isUmbau ? (
-                <ImagePlus className="h-5 w-5" aria-hidden />
-              ) : (
-                <NotebookPen className="h-5 w-5" aria-hidden />
-              )
+      {showForm ? (
+        <form
+          aria-label={formHeading(isEditing, isUmbau)}
+          className="flex flex-col gap-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (isEditing) {
+              handleUpdate();
+            } else {
+              handleCreate();
             }
-            title={heading}
-          />
-        </header>
+          }}
+        >
+          {!isUmbau ? (
+            <ManualEntryCategoryCard value={category} onChange={setCategory} />
+          ) : null}
 
-        {!showForm ? (
-          <ListSearchControls
-            query={query}
-            onQueryChange={setQuery}
-            placeholder={isUmbau ? "Titel, Notiz…" : "Titel, Notiz, Werkstatt…"}
-            chips={listChips}
-            activeChipId={listFilter}
-            onChipChange={(id) => setListFilter(id as ManualListFilter)}
-            resultLabel={searchResultLabel}
-          />
-        ) : null}
-
-        {error || compressError ? (
-          <p
-            role="alert"
-            className="rounded-xl bg-red-50 px-3 py-2.5 text-[0.8rem] text-red-700"
-          >
-            {error || compressError}
-          </p>
-        ) : null}
-
-        {showForm ? (
-          <form
-            className="space-y-3 zt-feature-panel p-4 shadow-[var(--vd-shadow-sm)]"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (isEditing) {
-                handleUpdate();
-              } else {
-                handleCreate();
-              }
-            }}
-          >
-            <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-              {isEditing
-                ? isUmbau
-                  ? "Bild bearbeiten"
-                  : "Eintrag bearbeiten"
-                : isUmbau
-                  ? "Neues Bild"
-                  : "Neuer Eintrag"}
-            </p>
-            {!isUmbau ? (
-              <>
-                <p className={MANUAL_ENTRY_FIELD_LABEL}>Art</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {MANUAL_ENTRY_CATEGORIES.map((id) => (
-                    <PressableButton
-                      key={id}
-                      type="button"
-                      variant="button"
-                      onClick={() => setCategory(id)}
-                      className={`${MANUAL_ENTRY_CATEGORY_BTN} ${
-                        category === id
-                          ? "border-neutral-900 bg-white text-neutral-900 shadow-[var(--vd-shadow-sm)]"
-                          : "border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-muted)]"
-                      }`}
-                    >
-                      {MANUAL_ENTRY_CATEGORY_LABELS[id]}
-                    </PressableButton>
-                  ))}
-                </div>
-              </>
-            ) : null}
-
-            <GarageField label="Beleg" htmlFor="manual-entry-title">
+          <InsetGroupedCard header="Details">
+            <ManualEntryFieldRow label="Beleg" htmlFor="manual-entry-title">
               <GarageInsetInput
                 id="manual-entry-title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
+                className={MANUAL_ENTRY_CONTROL_CLASS}
                 placeholder={
                   isUmbau || category === "tuning"
                     ? "Was war am Auto? Beschreibung (optional)"
                     : "z. B. Ölwechsel selbst gemacht (optional)"
                 }
               />
-            </GarageField>
-
-            {isUmbau ? (
-              <GarageField label="Datum" htmlFor="manual-entry-date">
-                <GermanDateInput
-                  id="manual-entry-date"
-                  variant="inset"
-                  value={date || null}
-                  onChange={(iso) => setDate(iso ?? "")}
-                />
-              </GarageField>
-            ) : (
-              <GarageFieldRow>
-                <GarageFieldCell label="Datum" htmlFor="manual-entry-date">
-                  <GermanDateInput
-                    id="manual-entry-date"
-                    variant="inset"
-                    value={date || null}
-                    onChange={(iso) => setDate(iso ?? "")}
-                  />
-                </GarageFieldCell>
-                <GarageFieldCell label="Betrag (€)" htmlFor="manual-entry-amount">
+            </ManualEntryFieldRow>
+            <ManualEntryFieldRow label="Datum" htmlFor="manual-entry-date">
+              <GermanDateInput
+                id="manual-entry-date"
+                variant="inset"
+                value={date || null}
+                onChange={(iso) => setDate(iso ?? "")}
+                className={cn(MANUAL_ENTRY_CONTROL_CLASS, "tabular-nums")}
+              />
+            </ManualEntryFieldRow>
+            {!isUmbau ? (
+              <>
+                <ManualEntryFieldRow label="Betrag (€)" htmlFor="manual-entry-amount">
                   <GarageInsetInput
                     id="manual-entry-amount"
                     inputMode="decimal"
                     value={amount}
                     onChange={(event) => setAmount(event.target.value)}
-                    placeholder={
-                      lineItems.length > 0 ? "aus Positionen" : "optional"
-                    }
+                    className={cn(MANUAL_ENTRY_CONTROL_CLASS, "tabular-nums")}
+                    placeholder={lineItems.length > 0 ? "aus Positionen" : "optional"}
                   />
-                </GarageFieldCell>
-              </GarageFieldRow>
-            )}
-
-            {!isUmbau ? (
-              <>
-                <div className="space-y-2">
-                  {!selfMade ? (
-                    <GarageField
-                      label="Werkstatt / Quelle"
-                      htmlFor="manual-entry-vendor"
-                    >
-                      <GarageInsetInput
-                        id="manual-entry-vendor"
-                        value={vendor}
-                        onChange={(event) => setVendor(event.target.value)}
-                        placeholder="optional"
-                      />
-                    </GarageField>
-                  ) : null}
-                  <PressableButton
-                    type="button"
-                    variant="button"
-                    aria-pressed={selfMade}
-                    onClick={() => {
-                      setSelfMade((active) => {
-                        const next = !active;
-                        if (next) setVendor("");
-                        return next;
-                      });
-                    }}
-                    className={`${MANUAL_ENTRY_CATEGORY_BTN} w-full justify-center ${
-                      selfMade
-                        ? "border-neutral-900 bg-white text-neutral-900 shadow-[var(--vd-shadow-sm)]"
-                        : "border-[color:var(--vd-border)] bg-transparent text-[color:var(--vd-muted)]"
-                    }`}
-                  >
-                    Selbstgemacht
-                  </PressableButton>
-                </div>
-
-                <GarageField label="Kilometerstand" htmlFor="manual-entry-km">
+                </ManualEntryFieldRow>
+                {!selfMade ? (
+                  <ManualEntryFieldRow label="Werkstatt / Quelle" htmlFor="manual-entry-vendor">
+                    <GarageInsetInput
+                      id="manual-entry-vendor"
+                      value={vendor}
+                      onChange={(event) => setVendor(event.target.value)}
+                      className={MANUAL_ENTRY_CONTROL_CLASS}
+                      placeholder="optional"
+                    />
+                  </ManualEntryFieldRow>
+                ) : null}
+                <ManualEntrySwitchRow
+                  label="Selbstgemacht"
+                  checked={selfMade}
+                  onCheckedChange={(next) => {
+                    setSelfMade(next);
+                    if (next) setVendor("");
+                  }}
+                />
+                <ManualEntryFieldRow label="Kilometerstand" htmlFor="manual-entry-km">
                   <MileageKmInput
                     id="manual-entry-km"
                     variant="inset"
                     value={parseMileageKmInput(mileageKm)}
                     onChange={(km) => setMileageKm(km === null ? "" : String(km))}
+                    className={MANUAL_ENTRY_CONTROL_CLASS}
                     placeholder="optional"
                   />
-                </GarageField>
+                </ManualEntryFieldRow>
               </>
             ) : null}
-
-            {!isUmbau ? (
-              <EditableLineItemsSection
-                items={lineItems}
-                onChange={handleLineItemsChange}
-                totalAmount={
-                  lineItems.length > 0
-                    ? lineItems.reduce((sum, item) => sum + item.amount, 0)
-                    : null
-                }
-                emptyHint="Optional — Teile und Kosten wie bei einer Rechnung eintragen."
-              />
-            ) : null}
-
-            <GarageField label="Notiz" htmlFor="manual-entry-notes">
+            <ManualEntryFieldRow label="Notiz" htmlFor="manual-entry-notes">
               <GarageInsetTextarea
                 id="manual-entry-notes"
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
-                className="resize-none"
-                placeholder={
-                  isUmbau
-                    ? "Optional — was zeigt das Foto?"
-                    : "Was wurde gemacht?"
-                }
+                className={cn(MANUAL_ENTRY_CONTROL_CLASS, "resize-none")}
+                placeholder={isUmbau ? "Optional — was zeigt das Foto?" : "Was wurde gemacht?"}
               />
-            </GarageField>
+            </ManualEntryFieldRow>
+          </InsetGroupedCard>
 
-            <div id="manual-entry-photos" className="scroll-mt-24 space-y-2">
-              <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-[color:var(--vd-muted)]">
-                Fotos{" "}
-                <span className="normal-case tracking-normal text-[color:var(--vd-muted)]">
-                  {isEditing
-                    ? isUmbau
-                      ? `(bis zu ${UMBAU_ENTRY_MAX_PHOTOS} neue Bilder)`
-                      : "(neu hinzufügen oder ersetzen)"
-                    : isUmbau
-                      ? `(mindestens 1, max. ${UMBAU_ENTRY_MAX_PHOTOS})`
-                      : `(optional, max. ${MANUAL_ENTRY_MAX_PHOTOS})`}
-                </span>
-              </p>
+          {!isUmbau ? (
+            <EditableLineItemsSection
+              items={lineItems}
+              onChange={handleLineItemsChange}
+              totalAmount={
+                lineItems.length > 0
+                  ? lineItems.reduce((sum, item) => sum + item.amount, 0)
+                  : null
+              }
+              emptyHint="Optional — Teile und Kosten wie bei einer Rechnung eintragen."
+            />
+          ) : null}
 
-              {isEditing && existingPhotoUrl ? (
-                <div className="relative aspect-video overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-neutral-100">
-                  {existingPhotoIsImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={existingPhotoUrl}
-                      alt=""
-                      className="h-full w-full object-contain"
-                    />
-                  ) : isUmbau ? (
-                    <p className="flex h-full min-h-[12rem] items-center justify-center px-4 text-center text-[0.82rem] text-[color:var(--vd-muted)]">
-                      Nur Bilder werden hier angezeigt.
-                    </p>
-                  ) : (
-                    <iframe
-                      title="Vorhandenes Dokument"
-                      src={existingPhotoUrl}
-                      className="h-full min-h-[12rem] w-full"
-                    />
-                  )}
-                </div>
-              ) : null}
+          <ManualEntryPhotosCard
+            hint={photosHint(isEditing, isUmbau)}
+            statusLabel={statusLabel}
+            isUmbau={isUmbau}
+            existingPhoto={
+              isEditing && existingPhotoUrl
+                ? { url: existingPhotoUrl, isImage: Boolean(existingPhotoIsImage) }
+                : null
+            }
+            photos={photos}
+            canAddMore={photos.length < photoLimit}
+            busy={busy}
+            onAddFiles={(files) => void addPhotoFiles(files)}
+            onRemovePhoto={removePhoto}
+          />
 
-              {photos.length > 0 ? (
-                <ul className="grid grid-cols-3 gap-2">
-                  {photos.map((photo) => (
-                    <li
-                      key={photo.id}
-                      className="relative aspect-square overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-neutral-100"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={photo.previewUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        aria-label="Foto entfernen"
-                        disabled={busy}
-                        onClick={() => removePhoto(photo.id)}
-                        className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-neutral-950/75 text-white"
-                      >
-                        <X className="h-3.5 w-3.5" aria-hidden />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+          {canOfferBuildStory && hasPhotoForBuildStory ? (
+            <ManualEntryBuildStoryCard
+              checked={showOnBuildStory}
+              disabled={busy}
+              onCheckedChange={setShowOnBuildStory}
+            />
+          ) : null}
 
-              {photos.length < photoLimit ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="claim-back relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden">
-                    <input
-                      type="file"
-                      accept="image/*,.heic,.heif"
-                      capture="environment"
-                      disabled={busy}
-                      className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-                      onChange={(event) => {
-                        void addPhotoFiles(event.target.files);
-                        event.target.value = "";
-                      }}
-                    />
-                    <Camera className="h-4 w-4" aria-hidden />
-                    Kamera
-                  </label>
-                  <label className="claim-back relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden">
-                    <input
-                      type="file"
-                      accept="image/*,.heic,.heif"
-                      multiple
-                      disabled={busy}
-                      className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-                      onChange={(event) => {
-                        void addPhotoFiles(event.target.files);
-                        event.target.value = "";
-                      }}
-                    />
-                    <ImagePlus className="h-4 w-4" aria-hidden />
-                    Galerie
-                  </label>
-                </div>
-              ) : null}
-
-              {statusLabel ? (
-                <p className="text-[0.78rem] text-[color:var(--vd-muted)]">
-                  {statusLabel}
-                </p>
-              ) : null}
-            </div>
-
-            {canOfferBuildStory && hasPhotoForBuildStory ? (
-              <label
-                className="flex cursor-pointer items-start gap-3 rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)] px-4 py-3"
-              >
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 shrink-0 rounded border-[color:var(--vd-border)] accent-[color:var(--vd-accent)]"
-                  checked={showOnBuildStory}
-                  disabled={busy}
-                  onChange={(event) =>
-                    setShowOnBuildStory(event.target.checked)
-                  }
-                />
-                <span className="min-w-0 space-y-1">
-                  <span className="block text-[0.88rem] font-medium text-[color:var(--vd-text)]">
-                    In der Build-Story zeigen
-                  </span>
-                  <span className="block text-[0.78rem] leading-snug text-[color:var(--vd-muted)]">
-                    Sichtbar für Besucher nur wenn die Build-Story im Profil
-                    öffentlich ist. Deine Auswahl wird mit dem Eintrag
-                    gespeichert.
-                  </span>
-                </span>
-              </label>
-            ) : null}
-
-            <div className="flex flex-col gap-2 pt-1">
-              <PressableButton
-                type="submit"
-                variant="button"
-                disabled={
-                  busy ||
-                  (!isEditing && isUmbau && photos.length === 0)
-                }
-                className="claim-cta w-full disabled:opacity-60"
-              >
-                {busy
-                  ? "Speichern…"
-                  : isEditing
-                    ? "Änderungen speichern"
-                    : isUmbau
-                      ? "Fotos speichern"
-                      : "Eintrag speichern"}
-              </PressableButton>
-              <PressableButton
-                type="button"
-                variant="button"
-                disabled={busy}
-                onClick={closeForm}
-                className="claim-back w-full"
-              >
-                Abbrechen
-              </PressableButton>
-            </div>
-          </form>
-        ) : null}
-
-        <section
-          aria-label={isUmbau ? "Umbau-Bilder" : "Manuelle Einträge"}
-          className="space-y-2"
-        >
-          <AutomotiveSectionLabel>
-            {isUmbau ? "Umbau-Bilder" : "Einträge"}
-          </AutomotiveSectionLabel>
-
-          {entries.length === 0 ? (
-            <AutomotiveEmptyPanel>
-              {emptyCopy.title}. {emptyCopy.body}
-            </AutomotiveEmptyPanel>
-          ) : visibleEntries.length === 0 ? (
-            <AutomotiveEmptyPanel>
-              Keine Treffer für diese Suche / Filter.
-            </AutomotiveEmptyPanel>
-          ) : (
-            <AutomotiveList aria-label="Umbauten und Einträge">
-              {visibleEntries.map((doc, index) => {
-                const kind =
-                  doc.category === "tuning"
-                    ? MANUAL_ENTRY_CATEGORY_LABELS.tuning
-                    : MANUAL_ENTRY_CATEGORY_LABELS.service;
-                const amount =
-                  typeof doc.amount === "number"
-                    ? formatDocumentAmount(doc.amount)
-                    : null;
-                const vendor = doc.vendor?.trim() || kind;
-                const issued = formatDocumentDateCompact(doc.date);
-                const hasPhoto = isViewableDocumentUrl(doc.file_url);
-                const RowIcon = doc.category === "tuning" ? Wrench : NotebookPen;
-
-                return (
-                  <AutomotiveListRow
-                    key={doc.id}
-                    href={documentDetailHref(tagUuid, doc.id, surfaceScope)}
-                    icon={RowIcon}
-                    title={displayDocumentTitle(doc.title)}
-                    amount={amount ?? undefined}
-                    meta={`${vendor} · ${issued} · ${kind}`}
-                    badge={
-                      hasPhoto ? (
-                        <span className="inline-flex rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-emerald-400">
-                          Foto
-                        </span>
-                      ) : undefined
-                    }
-                    showDivider={index < visibleEntries.length - 1}
-                  />
-                );
-              })}
-            </AutomotiveList>
-          )}
-        </section>
-      </div>
-
-      {!showForm ? (
-        <FixedBottomActionBar>
-          <PressableButton
-            type="button"
-            variant="button"
-            onClick={() => setShowForm(true)}
-            className="claim-cta inline-flex w-full items-center justify-center gap-2"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            {emptyCopy.cta}
-          </PressableButton>
-        </FixedBottomActionBar>
+          <ManualEntryFormActions
+            submitLabel={submitLabel(busy, isEditing, isUmbau)}
+            submitDisabled={busy || (!isEditing && isUmbau && photos.length === 0)}
+            cancelDisabled={busy}
+            onCancel={closeForm}
+          />
+        </form>
       ) : null}
-    </div>
+
+      <ManualEntryList
+        tagUuid={tagUuid}
+        surfaceScope={surfaceScope}
+        isUmbau={isUmbau}
+        totalCount={entries.length}
+        entries={visibleEntries}
+        emptyTitle={emptyCopy.title}
+        emptyBody={emptyCopy.body}
+      />
+    </IOSListPage>
   );
 }
+
