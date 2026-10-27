@@ -61,6 +61,10 @@ export default async function UploadDocumentPage({
           vehicleId={vehicle.id}
           tagUuid={result.tag.uuid}
           vehicleLabel={vehicleLabel}
+          vehicleSurfaceScope={{
+            vehicleId: vehicle.id,
+            linkedTagUuid: result.tag.uuid,
+          }}
           defaultType={defaultType}
           lockType={defaultType === "invoice" ? "invoice" : undefined}
         />

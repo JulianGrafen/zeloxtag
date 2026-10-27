@@ -66,11 +66,12 @@ export default async function UploadDocumentPage({
         <DocumentUploadForm
           vehicleId={vehicle.id}
           tagUuid={scope.linkedTagUuid ?? vehicleId}
-          vehicleSurfaceScope={garageNavScope}
+          vehicleSurfaceScope={scope}
           vehicleLabel={vehicleLabel}
           defaultType={defaultType}
           lockType={defaultType === "invoice" ? "invoice" : undefined}
-          backHref={vehicleSurfaceHref(garageNavScope,
+          backHref={vehicleSurfaceHref(
+            scope,
             defaultType === "invoice"
               ? "dokumente?type=invoice"
               : "dokumente",

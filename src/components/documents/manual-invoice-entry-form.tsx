@@ -10,11 +10,11 @@ import { serializeTopicTags } from "@/lib/documents/entry-topic-tags";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { showSavedToast } from "@/lib/ui/saved-toast";
+import { documentDetailHref } from "@/lib/vehicle-surface/documents-list-href";
 import {
-  documentDetailHref,
-  documentsListHref,
-} from "@/lib/vehicle-surface/documents-list-href";
-import { isVehicleId } from "@/lib/vehicle-surface/paths";
+  vehicleSurfaceHref,
+  vehicleSurfaceScopeFromContext,
+} from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { InvoiceTextParseResult } from "@/lib/ocr/text-parse-schema";
 
@@ -46,9 +46,12 @@ export function ManualInvoiceEntryForm({
   vehicleSurfaceScope,
 }: ManualInvoiceEntryFormProps) {
   const router = useRouter();
+  const surfaceScope =
+    vehicleSurfaceScope ??
+    vehicleSurfaceScopeFromContext(tagUuid, vehicleId);
   const resolvedBackHref =
     backHref ??
-    documentsListHref(tagUuid, "invoice", vehicleSurfaceScope);
+    vehicleSurfaceHref(surfaceScope);
   const [title, setTitle] = useState("");
   const [fields, setFields] = useState<InvoiceTextParseResult>(() =>
     emptyInvoiceReviewFields("service"),
@@ -131,16 +134,10 @@ export function ManualInvoiceEntryForm({
       }
 
       showSavedToast();
-      const scope =
-        vehicleSurfaceScope ??
-        ({
-          vehicleId,
-          linkedTagUuid: isVehicleId(tagUuid) ? null : tagUuid,
-        } satisfies VehicleSurfaceScope);
       const detailHref = documentDetailHref(
         tagUuid,
         result.document.id,
-        scope,
+        surfaceScope,
       );
       router.push(
         detailHref.includes("?") ? `${detailHref}&saved=1` : `${detailHref}?saved=1`,
@@ -154,7 +151,7 @@ export function ManualInvoiceEntryForm({
       title="Beleg hinzufügen"
       subtitle={`${vehicleLabel} · Manuell ohne KI`}
       backHref={resolvedBackHref}
-      backLabel="Belege"
+      backLabel="Menü"
     >
       <InvoiceReviewForm
         title={title}
