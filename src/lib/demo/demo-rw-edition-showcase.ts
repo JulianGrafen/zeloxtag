@@ -13,7 +13,7 @@ import { DEMO_ENGINE_SOUND_URL } from "./demo-assets";
 export const DEMO_RW_EDITION_TAG_UUID = "demo-rw-edition";
 
 export const MOCK_RW_EDITION_VEHICLE_ID = "veh_demo_mini_f56";
-export const DEMO_RW_EDITION_INSTAGRAM_HANDLE = "rw_edition";
+export const DEMO_RW_EDITION_INSTAGRAM_HANDLE = "rwedition";
 export const DEMO_RW_EDITION_PARTNER_WEB_URL = "https://www.rw-edition.de/home/";
 export const DEMO_RW_EDITION_SHOWCASE_IMAGE = "/demo/rw-edition-showcase.jpg";
 export const DEMO_RW_EDITION_GALLERY_REAR_IMAGE = "/demo/rw-edition-rear.jpg";
