@@ -9,12 +9,10 @@ import {
   resolveInvoiceTotals,
   type InvoiceTotals,
 } from "@/lib/documents/invoice-totals";
-import { splitLineItemLabel } from "@/lib/documents/line-item-detail";
 import { cn } from "@/lib/utils";
 import {
   formatCurrencyEUR,
-  formatLineItemLabel,
-  restoreGermanUmlauts,
+  formatInvoicePositionLabel,
 } from "@/utils/formatters";
 
 /** Positions shown before the „Alle X Positionen anzeigen“ toggle. */
@@ -64,20 +62,13 @@ function summaryRows(totals: InvoiceTotals | null): SummaryRow[] {
 }
 
 function LineItemRow({ item }: { item: ReceiptLineItem }) {
-  const { title, detail } = splitLineItemLabel(item.label);
+  const label = formatInvoicePositionLabel(item.label);
 
   return (
     <li className="relative flex items-start justify-between gap-3 px-4 py-2.5 after:absolute after:bottom-0 after:left-4 after:right-0 after:h-px after:bg-white/[0.08] last:after:hidden">
-      <div className="min-w-0 flex-1">
-        <p className="text-[15px] leading-snug text-white [overflow-wrap:anywhere]">
-          {formatLineItemLabel(title)}
-        </p>
-        {detail ? (
-          <p className="mt-0.5 text-xs tabular-nums text-[#8E8E93]">
-            {restoreGermanUmlauts(detail)}
-          </p>
-        ) : null}
-      </div>
+      <p className="min-w-0 flex-1 text-[15px] leading-snug text-white [overflow-wrap:anywhere]">
+        {label}
+      </p>
       <TelemetryValue value={formatCurrencyEUR(item.amount)} className="pt-px text-[15px]" />
     </li>
   );

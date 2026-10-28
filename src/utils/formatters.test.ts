@@ -4,6 +4,7 @@ import {
   formatCurrencyEUR,
   formatDateDE,
   formatInvoiceNumber,
+  formatInvoicePositionLabel,
   formatLineItemLabel,
   formatMileageKm,
   restoreGermanUmlauts,
@@ -92,6 +93,20 @@ describe("formatLineItemLabel", () => {
   it("strips trailing qty/price glue and restores umlauts", () => {
     expect(formatLineItemLabel("Bremsfluessigkeit DOT4  1,00 38,50")).toBe(
       "Bremsflüssigkeit DOT4",
+    );
+  });
+});
+
+describe("formatInvoicePositionLabel", () => {
+  it("keeps the full position text including quantity and price tails", () => {
+    expect(
+      formatInvoicePositionLabel("Bremsfluessigkeit DOT4  1,00 38,50"),
+    ).toBe("Bremsflüssigkeit DOT4 1,00 38,50");
+  });
+
+  it("joins multiline OCR with a middle dot", () => {
+    expect(formatInvoicePositionLabel("Ölfilter\nwechseln")).toBe(
+      "Ölfilter · wechseln",
     );
   });
 });

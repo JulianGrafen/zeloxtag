@@ -12,6 +12,7 @@ import type { DocumentLineItem } from "@/types/database";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
 import { showSavedToast } from "@/lib/ui/saved-toast";
 import { cn } from "@/lib/utils";
+import { formatInvoicePositionLabel } from "@/utils/formatters";
 
 const EDIT_TARGET: InvoiceDetailEditTarget = "lineItems";
 
@@ -339,7 +340,9 @@ export function EditableLineItemsSection({
         <ul className="garage-grouped-list">
           {displayItems.map((item, index) => (
             <li key={`${item.label}-${index}`} className="garage-grouped-list__row">
-              <span className="garage-grouped-list__label">{item.label}</span>
+              <span className="garage-grouped-list__label">
+                {formatInvoicePositionLabel(item.label)}
+              </span>
               <span className="garage-grouped-list__value">
                 {formatEur(item.amount)}
               </span>

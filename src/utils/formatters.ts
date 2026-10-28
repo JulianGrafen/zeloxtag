@@ -16,7 +16,12 @@ const EMPTY_VALUE = "—";
 /** 2265.05 → "2.265,05 €". Returns "—" for missing / invalid values. */
 export function formatCurrencyEUR(amount: number | null | undefined): string {
   if (amount == null || !Number.isFinite(amount)) return EMPTY_VALUE;
-  return EUR_FORMATTER.format(amount);
+  const formatted = EUR_FORMATTER.format(amount);
+  if (formatted.includes("€")) return formatted;
+  return `${amount.toLocaleString(DE_LOCALE, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}\u00a0€`;
 }
 
 /** 302400 → "302.400 km". Returns null when unknown. */
@@ -40,4 +45,16 @@ export function formatInvoiceNumber(raw: string | null | undefined): string | nu
 /** Display label for an invoice position: OCR glue stripped, umlauts restored. */
 export function formatLineItemLabel(label: string): string {
   return restoreGermanUmlauts(humanizeShowcaseLabel(label));
+}
+
+/** Beleg-Detail: volle Positionsbezeichnung (kein Kürzen, kein Preis-Strip). */
+export function formatInvoicePositionLabel(label: string): string {
+  const normalized = label
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(" · ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return restoreGermanUmlauts(normalized || label.trim());
 }
