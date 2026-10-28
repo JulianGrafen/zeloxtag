@@ -24,6 +24,8 @@ type ShowroomModsProps = {
   modifications: PublicModification[];
   partnerBranding?: PublicShowcaseB2bPartner | null;
   embedded?: boolean;
+  /** Demo / partner pitch — Umbauten list open on first paint. */
+  defaultOpen?: boolean;
 };
 
 function formatDate(iso: string | null): string | null {
@@ -117,8 +119,9 @@ export function ShowroomMods({
   modifications,
   partnerBranding = null,
   embedded = false,
+  defaultOpen = false,
 }: ShowroomModsProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
 
   if (modifications.length === 0) {
     return null;

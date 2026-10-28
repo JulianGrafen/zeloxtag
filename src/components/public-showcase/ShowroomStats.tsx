@@ -165,6 +165,7 @@ export function ShowroomStats({
             profile={profile}
             modifications={modifications}
             partnerBranding={partnerBranding}
+            modsDefaultOpen={revealOnMount}
           />
         </ShowroomRevealItem>
       ) : null}

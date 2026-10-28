@@ -52,6 +52,7 @@ import {
 } from "@/lib/seo/open-graph";
 import { buildDemoAulitzkyPublicShowcasePayload } from "@/lib/demo/demo-aulitzky-showcase";
 import { buildDemoUndergroundGaragePublicShowcasePayload } from "@/lib/demo/demo-underground-garage-showcase";
+import { buildDemoRwEditionPublicShowcasePayload } from "@/lib/demo/demo-rw-edition-showcase";
 import {
   buildDemoPublicShowcasePayload,
   enrichDemoShowcaseVehicle,
@@ -486,6 +487,17 @@ export default async function TagScanPage({
           <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
             <PublicShowcaseView
               data={buildDemoUndergroundGaragePublicShowcasePayload()}
+              revealShowroomStatsOnMount
+            />
+          </TagScanRitualGate>
+        );
+      }
+
+      if (tag.uuid === MOCK_TAG_UUIDS.rwEdition) {
+        return (
+          <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
+            <PublicShowcaseView
+              data={buildDemoRwEditionPublicShowcasePayload()}
               revealShowroomStatsOnMount
             />
           </TagScanRitualGate>

@@ -75,17 +75,19 @@ export function ShowcaseBuiltByPartner({
         <div className="flex items-center gap-3 px-4 py-3.5">
           <div
             className={cn(
-              "flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-black/55 px-3.5 py-2 ring-1 ring-white/5",
-              logoSrc ? "h-10 min-w-[8.75rem] max-w-[11.5rem]" : "h-11 w-11",
+              "relative shrink-0 overflow-hidden rounded-full border border-white/10 bg-black/55 ring-1 ring-white/5",
+              logoSrc
+                ? "h-16 w-[calc(4rem*666/375+0.5rem)] max-w-[min(92vw,14rem)] p-1"
+                : "flex h-11 w-11 items-center justify-center",
             )}
           >
             {logoSrc ? (
               <Image
                 src={logoSrc}
                 alt={partner.logoAlt ?? partner.name}
-                width={184}
-                height={48}
-                className="h-[1.35rem] w-auto max-w-full object-contain object-center sm:h-6"
+                fill
+                sizes="(max-width: 640px) 40vw, 12rem"
+                className="object-contain object-center scale-[1.3]"
                 unoptimized
               />
             ) : (

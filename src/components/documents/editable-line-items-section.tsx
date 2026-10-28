@@ -7,6 +7,7 @@ import { updateDocumentFields } from "@/actions/update-document-fields";
 import { isActionFailure } from "@/lib/permissions/feature-gate-result";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import { GarageInsetInput } from "@/components/ui/garage-field";
+import { GermanAmountInput } from "@/components/documents/german-amount-input";
 import { formatEur } from "@/components/vehicle-dashboard/invoiceDocuments";
 import type { DocumentLineItem } from "@/types/database";
 import type { InvoiceDetailEditTarget } from "@/lib/documents/invoice-detail-edit";
@@ -65,16 +66,23 @@ function toDraft(items: DocumentLineItem[]): DraftItem[] {
   }));
 }
 
+function parseDraftAmount(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const amount = Number.parseFloat(trimmed.replace(",", "."));
+  return Number.isFinite(amount) ? Math.round(amount * 100) / 100 : null;
+}
+
 function parseDraft(draft: DraftItem[]): DocumentLineItem[] {
   const items: DocumentLineItem[] = [];
   for (const row of draft) {
     const label = row.label.trim().slice(0, 160);
     if (!label) continue;
-    const amount = Number.parseFloat(row.amount.trim().replace(",", "."));
-    if (!Number.isFinite(amount)) continue;
+    const amount = parseDraftAmount(row.amount);
+    if (amount === null) continue;
     items.push({
       label,
-      amount: Math.round(amount * 100) / 100,
+      amount,
       ...(typeof row.showOnPublicShowcase === "boolean"
         ? { showOnPublicShowcase: row.showOnPublicShowcase }
         : {}),
@@ -106,7 +114,7 @@ export function EditableLineItemsSection({
   renderReadView,
 }: EditableLineItemsSectionProps) {
   const inline = mode === "inline";
-  const [editing, setEditing] = useState(inline);
+  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<DraftItem[]>(() => toDraft(items));
   const [displayItems, setDisplayItems] = useState(items);
   const [error, setError] = useState<string | null>(null);
@@ -208,7 +216,7 @@ export function EditableLineItemsSection({
       {hideHeading ? null : (
       <div className="flex items-center justify-between gap-3 px-0.5">
         <h2 className={SECTION_HEADING_CLASS}>Positionen</h2>
-        {!editing && !inline && !hideEditTrigger ? (
+        {!editing && !hideEditTrigger ? (
           <PressableButton
             type="button"
             variant="button"
@@ -216,7 +224,7 @@ export function EditableLineItemsSection({
             className="inline-flex items-center gap-1 text-[0.8rem] font-medium text-[color:var(--vd-field-label)] transition-opacity active:opacity-70"
           >
             <Pencil className="h-3.5 w-3.5" aria-hidden />
-            Bearbeiten
+            {inline ? "Positionen anpassen" : "Bearbeiten"}
           </PressableButton>
         ) : null}
       </div>
@@ -247,13 +255,14 @@ export function EditableLineItemsSection({
                     });
                   }}
                   placeholder="Bezeichnung"
-                  className="min-w-0 !px-0 !py-1 text-[0.875rem]"
+                  className="min-w-0 !px-0 !py-1 text-[0.875rem] [overflow-wrap:anywhere]"
                 />
-                <GarageInsetInput
-                  inputMode="decimal"
-                  value={row.amount}
-                  onChange={(event) => {
-                    const value = event.target.value;
+                <GermanAmountInput
+                  variant="inset"
+                  value={parseDraftAmount(row.amount)}
+                  onChange={(amount) => {
+                    const value =
+                      amount != null ? String(amount).replace(".", ",") : "";
                     setDraft((current) => {
                       const next = current.map((entry, i) =>
                         i === index ? { ...entry, amount: value } : entry,
@@ -266,8 +275,8 @@ export function EditableLineItemsSection({
                       return next;
                     });
                   }}
-                  placeholder="€"
-                  className="w-full text-right !px-0 !py-1 text-[0.875rem] tabular-nums"
+                  placeholder="0,00"
+                  className="w-full text-right !px-0 !py-1 text-[0.875rem]"
                 />
                 <PressableButton
                   type="button"
@@ -330,7 +339,19 @@ export function EditableLineItemsSection({
                 {pending ? "Speichern…" : "Übernehmen"}
               </PressableButton>
             </div>
-          ) : null}
+          ) : (
+            <PressableButton
+              type="button"
+              variant="button"
+              onClick={() => {
+                setError(null);
+                setEditing(false);
+              }}
+              className="claim-cta inline-flex w-full items-center justify-center rounded-[var(--vd-radius-field)] px-3 py-2.5 text-[0.85rem] font-semibold"
+            >
+              Fertig
+            </PressableButton>
+          )}
         </div>
       ) : displayItems.length === 0 ? (
         <p className="px-0.5 text-[0.875rem] text-[color:var(--vd-muted)]">
@@ -340,7 +361,7 @@ export function EditableLineItemsSection({
         <ul className="garage-grouped-list">
           {displayItems.map((item, index) => (
             <li key={`${item.label}-${index}`} className="garage-grouped-list__row">
-              <span className="garage-grouped-list__label">
+              <span className="garage-grouped-list__label [overflow-wrap:anywhere]">
                 {formatInvoicePositionLabel(item.label)}
               </span>
               <span className="garage-grouped-list__value">

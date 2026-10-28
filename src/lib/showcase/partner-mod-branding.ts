@@ -20,6 +20,9 @@ export function modMatchesPartnerBrand(
   if (vendor.includes("aulitzky") || label.includes("aulitzky")) {
     return true;
   }
+  if (vendor.includes("rw edition") || label.includes("rw edition")) {
+    return true;
+  }
   if (partnerToken.length >= 3 && vendor.includes(partnerToken)) {
     return true;
   }

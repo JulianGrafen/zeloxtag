@@ -31,23 +31,25 @@ export function ShowcasePartnerVendorBadge({
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "pointer-events-auto relative z-[1] inline-flex max-w-full min-h-8 items-center gap-1.5 rounded-lg border border-white/15 bg-black/55 px-2.5 py-1",
+        "pointer-events-auto relative z-[1] inline-flex max-w-full items-center gap-1 rounded-full border border-white/15 bg-black/55 py-0 pl-0.5 pr-1.5",
         "transition-colors hover:border-white/25 hover:bg-white/[0.08]",
         className,
       )}
       aria-label={`${partner.name} — Partnerseite öffnen`}
     >
       {logoSrc ? (
-        <Image
-          src={logoSrc}
-          alt={partner.logoAlt ?? partner.name}
-          width={140}
-          height={36}
-          className="h-[1.125rem] w-auto max-w-[8.5rem] object-contain object-left"
-          unoptimized
-        />
+        <span className="relative block h-11 w-[calc(2.375rem*666/375+0.1rem)] max-w-[4.65rem] shrink-0 overflow-hidden rounded-full">
+          <Image
+            src={logoSrc}
+            alt={partner.logoAlt ?? partner.name}
+            fill
+            sizes="120px"
+            className="object-contain object-center scale-[1.48]"
+            unoptimized
+          />
+        </span>
       ) : (
-        <ModBadge className="border-0 bg-transparent p-0">{label}</ModBadge>
+        <ModBadge className="border-0 bg-transparent px-1.5 py-0.5">{label}</ModBadge>
       )}
       <ExternalLink
         className="h-3.5 w-3.5 shrink-0 text-white/45"

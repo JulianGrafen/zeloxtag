@@ -10,6 +10,11 @@ import {
   getDemoUndergroundGarageTagScan,
   MOCK_UNDERGROUND_GARAGE_VEHICLE_ID,
 } from "@/lib/demo/demo-underground-garage-showcase";
+import {
+  DEMO_RW_EDITION_TAG_UUID,
+  getDemoRwEditionTagScan,
+  MOCK_RW_EDITION_VEHICLE_ID,
+} from "@/lib/demo/demo-rw-edition-showcase";
 import { DEMO_E36_VEHICLE_TECH_SPECS } from "@/lib/demo/demo-vehicle-tech-specs";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
 
@@ -19,6 +24,7 @@ export const MOCK_TAG_UUIDS = {
   active: "demo-active-tag",
   aulitzky: DEMO_AULITZKY_TAG_UUID,
   undergroundGarage: DEMO_UNDERGROUND_GARAGE_TAG_UUID,
+  rwEdition: DEMO_RW_EDITION_TAG_UUID,
 } as const;
 
 /** Vehicle id for {@link MOCK_TAG_UUIDS.active} mock twin. */
@@ -729,6 +735,14 @@ const mockTags: Record<string, Tag> = {
     created_at: now,
     updated_at: now,
   },
+  [MOCK_TAG_UUIDS.rwEdition]: {
+    id: "tag_demo_rw_edition",
+    uuid: MOCK_TAG_UUIDS.rwEdition,
+    vehicle_id: MOCK_RW_EDITION_VEHICLE_ID,
+    status: "active",
+    created_at: now,
+    updated_at: now,
+  },
 };
 
 export function getMockTagScan(uuid: string): TagScanResult | null {
@@ -737,6 +751,9 @@ export function getMockTagScan(uuid: string): TagScanResult | null {
   }
   if (uuid === DEMO_UNDERGROUND_GARAGE_TAG_UUID) {
     return getDemoUndergroundGarageTagScan();
+  }
+  if (uuid === DEMO_RW_EDITION_TAG_UUID) {
+    return getDemoRwEditionTagScan();
   }
 
   const tag = mockTags[uuid];
