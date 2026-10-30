@@ -109,8 +109,9 @@ export function ProPaywallModal({
 
   const vehicleHero = useMemo(
     () =>
-      vehicleHeroProp ??
-      paywallVehicleHeroFromContext(triggerContext),
+      vehicleHeroProp !== undefined
+        ? vehicleHeroProp
+        : paywallVehicleHeroFromContext(triggerContext),
     [triggerContext, vehicleHeroProp],
   );
 

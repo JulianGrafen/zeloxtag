@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   getPaywallPersonalization,
+  hasPaywallHeroImage,
   inferPrimaryGoalFromFeature,
   paywallGoalOverrideForDashboardTile,
   paywallGoalOverrideForScanType,
+  paywallVehicleHeroFromContext,
   paywallVehicleShortName,
   resolvePaywallGoal,
 } from "@/lib/billing/paywall-personalization";
@@ -94,5 +96,18 @@ describe("paywall personalization", () => {
       variant: "free_scan_exhausted",
     });
     expect(exhausted.headline).toBe(base.headline);
+  });
+
+  it("detects missing paywall hero images", () => {
+    expect(hasPaywallHeroImage(null)).toBe(false);
+    expect(hasPaywallHeroImage({ vehicleImage: "  " })).toBe(false);
+    expect(
+      hasPaywallHeroImage({ vehicleImage: "/api/vehicle/silhouette/x" }),
+    ).toBe(true);
+    expect(
+      paywallVehicleHeroFromContext({
+        vehicleLabel: "VW Golf · 2019",
+      }),
+    ).toBeNull();
   });
 });
