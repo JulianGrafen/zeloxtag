@@ -4,11 +4,11 @@ export const REVENUECAT_WEBHOOK_API_PATH = "/api/billing/revenuecat/webhook";
 
 /** Public Stripe Payment Link for ZeloxTag Cloud (Pro Abo, monthly). */
 export const STRIPE_PRO_PAYMENT_LINK =
-  "https://buy.stripe.com/bJefZb2B3dKEbmVb3B0sU00";
+  "https://buy.stripe.com/3cI00d6Rj3609eN9Zx0sU03";
 
 /** Public Stripe Payment Link for ZeloxTag Cloud Pro Jahresabo. */
 export const STRIPE_PRO_ANNUAL_PAYMENT_LINK =
-  "https://buy.stripe.com/bJe00d5NfcGA62BgnV0sU01";
+  "https://buy.stripe.com/cNicMZ8ZrfSM1Ml5Jh0sU02";
 
 /** Client-safe: annual checkout is available when link or public env is set. */
 export function isAnnualPlanAvailable(): boolean {

@@ -30,6 +30,7 @@ export default async function VehicleSpecsPage({
   return (
     <VehicleSpecsView
       tagUuid={scope.linkedTagUuid ?? vehicleId}
+      vehicleSurfaceScope={scope}
       vehicle={{
         ...vehicle,
         tech_specs: parseVehicleTechSpecs(vehicle.tech_specs),

@@ -41,12 +41,18 @@ import {
   type VehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
 import { showSavedToast } from "@/lib/ui/saved-toast";
+import {
+  vehicleSurfaceHref,
+  vehicleSurfaceScopeFromContext,
+} from "@/lib/vehicle-surface/paths";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Vehicle } from "@/types/database";
 
 type VehicleSpecsViewProps = {
   tagUuid: string;
   vehicle: Vehicle;
   canEdit: boolean;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
 };
 
 type EditableSpecKey = Exclude<
@@ -61,8 +67,14 @@ export function VehicleSpecsView({
   tagUuid,
   vehicle,
   canEdit,
+  vehicleSurfaceScope,
 }: VehicleSpecsViewProps) {
   const router = useRouter();
+  const scope =
+    vehicleSurfaceScope ??
+    vehicleSurfaceScopeFromContext(tagUuid, vehicle.id);
+  const dashboardHref = vehicleSurfaceHref(scope);
+  const fahrzeugbildHref = vehicleSurfaceHref(scope, "daten/fahrzeugbild");
   const initialSpecs = parseVehicleTechSpecs(vehicle.tech_specs);
   const [make, setMake] = useState(vehicle.make);
   const [model, setModel] = useState(vehicle.model);
@@ -257,7 +269,7 @@ export function VehicleSpecsView({
     <IOSListPage
       title="Fahrzeugdaten"
       subtitle={title}
-      backHref={`/v/${tagUuid}`}
+      backHref={dashboardHref}
       overlay={saveBar}
     >
       {error ? (
@@ -268,7 +280,7 @@ export function VehicleSpecsView({
 
       <InsetGroupedCard>
         <InsetListRow
-          href={`/v/${tagUuid}/daten/fahrzeugbild`}
+          href={fahrzeugbildHref}
           icon={ImageIcon}
           iconTone="blue"
           emphasis="navigation"
