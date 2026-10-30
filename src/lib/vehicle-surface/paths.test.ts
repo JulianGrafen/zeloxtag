@@ -5,6 +5,7 @@ import {
   garagePathForVehicle,
   vehicleSurfaceBasePath,
   vehicleSurfaceHref,
+  vehicleSurfaceScopeFromContext,
 } from "./paths";
 
 describe("vehicleSurface paths", () => {
@@ -18,6 +19,14 @@ describe("vehicleSurface paths", () => {
     );
     expect(vehicleSurfaceHref(scope, "tanken")).toBe(
       "/v/22222222-2222-4222-8222-222222222222/tanken",
+    );
+  });
+
+  it("maps tagUuid fallback to garage scope for fahrzeugbild", () => {
+    const vehicleId = "11111111-1111-4111-8111-111111111111";
+    const scope = vehicleSurfaceScopeFromContext(vehicleId, vehicleId);
+    expect(vehicleSurfaceHref(scope, "daten/fahrzeugbild")).toBe(
+      `/garage/${vehicleId}/daten/fahrzeugbild`,
     );
   });
 
