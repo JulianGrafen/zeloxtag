@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ChangeEvent } from "react";
+import { useMemo, useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ImageIcon, Save } from "lucide-react";
 
@@ -20,6 +20,10 @@ import {
   resolveOilChangeInterval,
 } from "@/lib/documents/oil-changes";
 import { formatMileageKmNumber } from "@/lib/documents/format";
+import {
+  vehicleSurfaceHref,
+  vehicleSurfaceScopeFromContext,
+} from "@/lib/vehicle-surface/paths";
 import { silhouetteDisplayUrl } from "@/lib/vehicles/silhouette-display-url";
 import { readSilhouetteVersionFromSession } from "@/lib/vehicles/silhouette-session";
 import {
@@ -63,6 +67,12 @@ export function VehicleSpecsView({
   canEdit,
 }: VehicleSpecsViewProps) {
   const router = useRouter();
+  const surfaceScope = useMemo(
+    () => vehicleSurfaceScopeFromContext(tagUuid, vehicle.id),
+    [tagUuid, vehicle.id],
+  );
+  const dashboardHref = vehicleSurfaceHref(surfaceScope);
+  const fahrzeugbildHref = vehicleSurfaceHref(surfaceScope, "daten/fahrzeugbild");
   const initialSpecs = parseVehicleTechSpecs(vehicle.tech_specs);
   const [make, setMake] = useState(vehicle.make);
   const [model, setModel] = useState(vehicle.model);
@@ -257,7 +267,7 @@ export function VehicleSpecsView({
     <IOSListPage
       title="Fahrzeugdaten"
       subtitle={title}
-      backHref={`/v/${tagUuid}`}
+      backHref={dashboardHref}
       overlay={saveBar}
     >
       {error ? (
@@ -268,7 +278,7 @@ export function VehicleSpecsView({
 
       <InsetGroupedCard>
         <InsetListRow
-          href={`/v/${tagUuid}/daten/fahrzeugbild`}
+          href={fahrzeugbildHref}
           icon={ImageIcon}
           iconTone="blue"
           emphasis="navigation"
