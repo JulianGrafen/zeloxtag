@@ -30,7 +30,7 @@ export default async function ClaimTagPage({ params }: ClaimTagPageProps) {
 
   const user = await getCurrentUser();
   if (!user) {
-    redirect(`/?next=${encodeURIComponent(`/claim/${tagUuid}`)}`);
+    redirect(`/login?next=${encodeURIComponent(`/claim/${tagUuid}`)}`);
   }
 
   const state = await resolveClaimTagState(tagUuid, user.id);

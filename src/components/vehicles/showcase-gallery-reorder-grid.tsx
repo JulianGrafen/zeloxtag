@@ -1,7 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Reorder, useDragControls } from "framer-motion";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Loader2, Trash2 } from "lucide-react";
 
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
@@ -27,36 +41,44 @@ function GalleryTile({
   busy,
   deletingId,
   onDelete,
-  onDragEnd,
 }: {
   photo: Document;
   canEdit: boolean;
   busy: boolean;
   deletingId: string | null;
   onDelete: (documentId: string) => void;
-  onDragEnd: () => void;
 }) {
-  const dragControls = useDragControls();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: photo.id,
+    disabled: !canEdit || busy,
+  });
+
   const previewSrc =
     documentMediaKind(photo.file_url) === "image"
       ? inlineDocumentProxyUrl(photo.file_url)
       : null;
 
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   return (
-    <Reorder.Item
-      value={photo}
-      dragListener={false}
-      dragControls={dragControls}
-      onDragEnd={onDragEnd}
+    <li
+      ref={setNodeRef}
+      style={style}
       className={cn(
         "group relative aspect-[4/3] list-none overflow-hidden rounded-xl border border-[color:var(--vd-border)] bg-[color:var(--vd-surface-elevated)]",
-        canEdit && "touch-none",
+        isDragging && "z-20 scale-[1.03] shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
       )}
-      whileDrag={{
-        scale: 1.03,
-        zIndex: 20,
-        boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
-      }}
     >
       {previewSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -77,12 +99,12 @@ function GalleryTile({
         <>
           <button
             type="button"
+            ref={setActivatorNodeRef}
             aria-label="Foto verschieben"
-            className="absolute bottom-1.5 left-1.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--vd-border)] bg-black/55 text-white backdrop-blur-sm active:scale-95"
+            className="absolute bottom-1.5 left-1.5 inline-flex h-8 w-8 touch-none items-center justify-center rounded-lg border border-[color:var(--vd-border)] bg-black/55 text-white backdrop-blur-sm active:scale-95"
             disabled={busy}
-            onPointerDown={(event) => {
-              dragControls.start(event);
-            }}
+            {...attributes}
+            {...listeners}
           >
             <GripVertical className="h-4 w-4" aria-hidden />
           </button>
@@ -102,7 +124,7 @@ function GalleryTile({
           </PressableButton>
         </>
       ) : null}
-    </Reorder.Item>
+    </li>
   );
 }
 
@@ -119,26 +141,52 @@ export function ShowcaseGalleryReorderGrid({
   const persistKeyRef = useRef(photos.map((photo) => photo.id).join("|"));
 
   useEffect(() => {
+    const nextKey = photos.map((photo) => photo.id).join("|");
+    if (reordering) return;
     setItems(photos);
-    persistKeyRef.current = photos.map((photo) => photo.id).join("|");
-  }, [photos]);
+    persistKeyRef.current = nextKey;
+  }, [photos, reordering]);
 
-  const itemsRef = useRef(items);
-  itemsRef.current = items;
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+  );
 
-  async function persistOrder() {
-    const next = itemsRef.current;
-    const nextKey = next.map((photo) => photo.id).join("|");
+  async function persistOrder(
+    nextItems: Document[],
+    rollbackItems: Document[],
+  ) {
+    const nextKey = nextItems.map((photo) => photo.id).join("|");
     if (nextKey === persistKeyRef.current) return;
 
     setReordering(true);
     try {
-      await onReorder(next.map((photo) => photo.id));
+      await onReorder(nextItems.map((photo) => photo.id));
       persistKeyRef.current = nextKey;
+    } catch {
+      setItems(rollbackItems);
     } finally {
       setReordering(false);
     }
   }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = items.findIndex((photo) => photo.id === active.id);
+    const newIndex = items.findIndex((photo) => photo.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const rollbackItems = items;
+    const next = arrayMove(items, oldIndex, newIndex);
+    setItems(next);
+    void persistOrder(next, rollbackItems);
+  }
+
+  const sortableIds = items.map((photo) => photo.id);
+  const gridBusy = busy || reordering;
 
   return (
     <div className="space-y-2">
@@ -148,30 +196,26 @@ export function ShowcaseGalleryReorderGrid({
           {reordering ? " · Speichern…" : null}
         </p>
       ) : null}
-      <Reorder.Group
-        axis="y"
-        values={items}
-        onReorder={(next) => {
-          setItems(next);
-          itemsRef.current = next;
-        }}
-        className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-        as="ul"
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
       >
-        {items.map((photo) => (
-          <GalleryTile
-            key={photo.id}
-            photo={photo}
-            canEdit={canEdit}
-            busy={busy || reordering}
-            deletingId={deletingId}
-            onDelete={onDelete}
-            onDragEnd={() => {
-              void persistOrder();
-            }}
-          />
-        ))}
-      </Reorder.Group>
+        <SortableContext items={sortableIds} strategy={rectSortingStrategy}>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {items.map((photo) => (
+              <GalleryTile
+                key={photo.id}
+                photo={photo}
+                canEdit={canEdit}
+                busy={gridBusy}
+                deletingId={deletingId}
+                onDelete={onDelete}
+              />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }

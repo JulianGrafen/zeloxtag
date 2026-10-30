@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/?next=/dashboard");
+    redirect("/login?next=/dashboard");
   }
 
   const destination = await resolvePostLoginPath(user.id);

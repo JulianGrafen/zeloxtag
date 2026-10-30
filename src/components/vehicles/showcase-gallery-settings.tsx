@@ -240,6 +240,7 @@ export function ShowcaseGallerySettings({
                   ? reorderError.message
                   : "Reihenfolge konnte nicht gespeichert werden.",
               );
+              throw reorderError;
             }
           }}
         />

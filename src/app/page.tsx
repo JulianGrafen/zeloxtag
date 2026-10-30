@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { AppShell } from "@/components/layout/app-shell";
-import { LoginForm } from "@/components/auth/login-form";
+import { LandingPage } from "@/components/landing/LandingPage";
 import { pageSocialMetadata } from "@/lib/seo/open-graph";
 
 export const metadata: Metadata = {
-  title: "Anmelden",
+  title: "ZeloxTag – Digitale Fahrzeughistorie in V4A-Edelstahl",
   description:
-    "Bei ZeloxTag anmelden — digitale Garage für dein Fahrzeug, optional mit V4A-Tag im Motorraum.",
+    "Lasergraviertes V4A-Typenschild am Schlossträger, verbunden mit einer digitalen Fahrzeugakte. Lückenloser Werterhalt, Car-Meets ohne App-Zwang.",
   ...pageSocialMetadata({
-    title: "Anmelden · ZeloxTag",
+    title: "ZeloxTag – Digitale Fahrzeughistorie in V4A-Edelstahl",
     description:
-      "Bei ZeloxTag anmelden — digitale Garage für dein Fahrzeug, optional mit V4A-Tag im Motorraum.",
+      "Lasergraviertes V4A-Typenschild am Schlossträger, verbunden mit einer digitalen Fahrzeugakte.",
     path: "/",
   }),
 };
@@ -25,40 +25,30 @@ interface HomePageProps {
   }>;
 }
 
-/**
- * Production landing: login / signup (replaces the public Supra demo dashboard).
- */
-function mapLoginQueryError(error: string | undefined): string | undefined {
-  if (!error) return undefined;
-  if (error === "rate_limited") {
-    return "Zu viele Versuche. Bitte kurz warten und erneut anmelden.";
-  }
-  if (error === "session") {
-    return "Sitzung konnte nicht geladen werden. Bitte erneut anmelden.";
-  }
-  if (error === "oauth_start_failed" || error === "oauth_provider") {
-    return "Anmeldung mit Google ist gerade nicht möglich. Bitte E-Mail & Passwort nutzen.";
-  }
-  return error;
+function legacyLoginQuery(params: {
+  next?: string;
+  error?: string;
+  recovered?: string;
+  tab?: string;
+}): string | null {
+  const query = new URLSearchParams();
+  if (params.next) query.set("next", params.next);
+  if (params.error) query.set("error", params.error);
+  if (params.recovered) query.set("recovered", params.recovered);
+  if (params.tab) query.set("tab", params.tab);
+  const encoded = query.toString();
+  return encoded ? encoded : null;
 }
 
+/**
+ * Public brand landing. Legacy `/?next=` login bookmarks continue to `/login`.
+ */
 export default async function HomePage({ searchParams }: HomePageProps) {
-  const { next, error, recovered, tab } = await searchParams;
+  const params = await searchParams;
+  const legacyQuery = legacyLoginQuery(params);
+  if (legacyQuery) {
+    redirect(`/login?${legacyQuery}`);
+  }
 
-  return (
-    <AppShell showNavbar={false}>
-      <LoginForm
-        nextPath={
-          next && next !== "/"
-            ? next
-            : tab === "signup"
-              ? "/onboarding/fahrzeug"
-              : "/auth/continue"
-        }
-        initialError={mapLoginQueryError(error)}
-        recovered={recovered === "1"}
-        initialTab={tab === "signup" ? "signup" : "password"}
-      />
-    </AppShell>
-  );
+  return <LandingPage />;
 }

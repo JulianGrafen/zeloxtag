@@ -7,10 +7,10 @@ import {
 import { isGenericPostLoginNext } from "@/lib/auth/post-login-path-guards";
 
 describe("loginGateHref", () => {
-  it("points at home with encoded next", () => {
+  it("points at /login with encoded next", () => {
     const href = loginGateHref("/garage/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
     expect(href).toBe(
-      "/?next=%2Fgarage%2Faaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "/login?next=%2Fgarage%2Faaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     );
   });
 });

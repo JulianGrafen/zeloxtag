@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import type { PublicGalleryPhoto } from "@/lib/vehicles/public-showcase-data";
@@ -87,16 +87,14 @@ export function ShowroomGalleryLightbox({
   const canGoBack = index > 0;
   const canGoForward = index < photos.length - 1;
 
-  return (
+  const overlay = (
     <div
-      className="fixed inset-0 z-[200] flex min-h-dvh flex-col bg-black"
+      className="fixed inset-0 z-[500] flex min-h-dvh flex-col bg-black"
       role="dialog"
       aria-modal="true"
       aria-label="Fotogalerie"
     >
-      <div
-        className="flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]"
-      >
+      <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <p className="text-[0.78rem] font-medium tabular-nums text-white/70">
           {index + 1} / {photos.length}
         </p>
@@ -110,7 +108,7 @@ export function ShowroomGalleryLightbox({
         </button>
       </div>
 
-      <div className="relative min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1 basis-0">
         <div
           ref={scrollerRef}
           onScroll={syncIndexFromScroll}
@@ -119,20 +117,16 @@ export function ShowroomGalleryLightbox({
           {photos.map((photo) => (
             <div
               key={photo.id}
-              className="relative flex h-full min-w-full shrink-0 snap-center items-center justify-center px-2 pb-1 pt-1"
+              className="flex h-full min-w-full shrink-0 snap-center items-center justify-center px-2 pb-1 pt-1"
             >
-              <div className="relative h-full w-full min-h-0">
-                <Image
-                  src={photo.src}
-                  alt={photo.alt}
-                  fill
-                  unoptimized
-                  className="object-contain"
-                  sizes="100vw"
-                  draggable={false}
-                  priority
-                />
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photo.src}
+                alt={photo.alt}
+                className="max-h-full max-w-full object-contain"
+                draggable={false}
+                decoding="async"
+              />
             </div>
           ))}
         </div>
@@ -166,4 +160,10 @@ export function ShowroomGalleryLightbox({
       </p>
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

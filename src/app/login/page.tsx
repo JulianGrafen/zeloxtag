@@ -1,9 +1,19 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+
+import { AppShell } from "@/components/layout/app-shell";
+import { LoginForm } from "@/components/auth/login-form";
+import { pageSocialMetadata } from "@/lib/seo/open-graph";
 
 export const metadata: Metadata = {
-  title: "Anmelden · ZeloxTag",
-  description: "Sicher bei ZeloxTag anmelden (Passwort, MFA).",
+  title: "Anmelden",
+  description:
+    "Bei ZeloxTag anmelden — digitale Garage für dein Fahrzeug, optional mit V4A-Tag im Motorraum.",
+  ...pageSocialMetadata({
+    title: "Anmelden · ZeloxTag",
+    description:
+      "Bei ZeloxTag anmelden — digitale Garage für dein Fahrzeug, optional mit V4A-Tag im Motorraum.",
+    path: "/login",
+  }),
 };
 
 interface LoginPageProps {
@@ -15,14 +25,37 @@ interface LoginPageProps {
   }>;
 }
 
-/** Legacy `/login` → canonical home login, keeping query params. */
+function mapLoginQueryError(error: string | undefined): string | undefined {
+  if (!error) return undefined;
+  if (error === "rate_limited") {
+    return "Zu viele Versuche. Bitte kurz warten und erneut anmelden.";
+  }
+  if (error === "session") {
+    return "Sitzung konnte nicht geladen werden. Bitte erneut anmelden.";
+  }
+  if (error === "oauth_start_failed" || error === "oauth_provider") {
+    return "Anmeldung mit Google ist gerade nicht möglich. Bitte E-Mail & Passwort nutzen.";
+  }
+  return error;
+}
+
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { next, error, recovered, tab } = await searchParams;
-  const params = new URLSearchParams();
-  if (next) params.set("next", next);
-  if (error) params.set("error", error);
-  if (recovered) params.set("recovered", recovered);
-  if (tab) params.set("tab", tab);
-  const qs = params.toString();
-  redirect(qs ? `/?${qs}` : "/");
+
+  return (
+    <AppShell showNavbar={false}>
+      <LoginForm
+        nextPath={
+          next && next !== "/"
+            ? next
+            : tab === "signup"
+              ? "/onboarding/fahrzeug"
+              : "/auth/continue"
+        }
+        initialError={mapLoginQueryError(error)}
+        recovered={recovered === "1"}
+        initialTab={tab === "signup" ? "signup" : "password"}
+      />
+    </AppShell>
+  );
 }

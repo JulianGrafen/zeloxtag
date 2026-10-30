@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 
 /**
  * Optional showcase of the vehicle twin — not the production landing page.
- * Landing remains `/` (login). Deep-link: `/demo`.
+ * Brand landing is `/`. Deep-link: `/demo`.
  */
 export default async function DemoPage() {
   const result = getMockTagScan(MOCK_TAG_UUIDS.active);

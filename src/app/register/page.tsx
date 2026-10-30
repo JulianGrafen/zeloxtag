@@ -4,7 +4,7 @@ type RegisterRedirectPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-/** Legacy PWA URL — garage signup lives on home (Registrieren tab). */
+/** Legacy PWA URL — garage signup lives on /login (Registrieren tab). */
 export default async function RegisterRedirectPage({
   searchParams,
 }: RegisterRedirectPageProps) {
@@ -17,5 +17,5 @@ export default async function RegisterRedirectPage({
     query.set(key, Array.isArray(value) ? value[0]! : value);
   }
 
-  redirect(`/?${query.toString()}`);
+  redirect(`/login?${query.toString()}`);
 }

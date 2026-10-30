@@ -3,10 +3,10 @@ import {
   sanitizePostLoginPath,
 } from "@/lib/auth/post-login-path-guards";
 
-/** Canonical login entry with preserved deep link (`/` hosts LoginForm). */
+/** Canonical login entry with preserved deep link (`/login` hosts LoginForm). */
 export function loginGateHref(nextPath: string): string {
   const safe = sanitizePostLoginPath(nextPath.trim() || "/auth/continue");
-  return `/?next=${encodeURIComponent(safe)}`;
+  return `/login?next=${encodeURIComponent(safe)}`;
 }
 
 /**

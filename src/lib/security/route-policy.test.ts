@@ -27,14 +27,14 @@ describe("isProtectedPagePath", () => {
 });
 
 describe("loginRedirectUrl", () => {
-  it("uses home login with next param", () => {
+  it("uses /login with next param", () => {
     const url = loginRedirectUrl(
       "https://app.zeloxtag.de",
       "/garage/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       "",
     );
     expect(url).toBe(
-      "https://app.zeloxtag.de/?next=%2Fgarage%2Faaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "https://app.zeloxtag.de/login?next=%2Fgarage%2Faaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     );
   });
 });
