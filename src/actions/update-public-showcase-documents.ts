@@ -23,6 +23,8 @@ import {
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { logServerError } from "@/lib/security/public-error";
+import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
+import { MOCK_DEMO_VEHICLE_ID } from "@/lib/tags/mock-tags";
 
 export type UpdatePublicShowcaseDocumentsInput = {
   vehicleId: string;
@@ -37,6 +39,55 @@ export type UpdatePublicShowcaseDocumentsInput = {
 export type UpdatePublicShowcaseDocumentsResult =
   | { status: "ok" }
   | { status: "error"; message: string };
+
+type ShowcaseDocumentRow = {
+  id: string;
+  line_items: unknown;
+  invoice_number: string | null;
+  category: string | null;
+  file_url: string | null;
+  show_on_build_story?: boolean | null;
+};
+
+async function loadShowcaseDocumentRows(
+  admin: ReturnType<typeof createAdminClient>,
+  vehicleId: string,
+): Promise<{ rows: ShowcaseDocumentRow[] | null; errorMessage: string | null }> {
+  const fullSelect =
+    "id, line_items, invoice_number, category, file_url, show_on_build_story";
+  const { data, error } = await admin
+    .from("documents")
+    .select(fullSelect)
+    .eq("vehicle_id", vehicleId);
+
+  if (!error) {
+    return { rows: (data ?? []) as ShowcaseDocumentRow[], errorMessage: null };
+  }
+
+  if (error.message.includes("show_on_build_story")) {
+    const fallback = await admin
+      .from("documents")
+      .select("id, line_items, invoice_number, category, file_url")
+      .eq("vehicle_id", vehicleId);
+    if (fallback.error) {
+      logServerError(
+        "[update-public-showcase-documents] docs load failed",
+        fallback.error,
+      );
+      return { rows: null, errorMessage: "Dokumente konnten nicht geladen werden." };
+    }
+    return {
+      rows: (fallback.data ?? []).map((row) => ({
+        ...(row as Omit<ShowcaseDocumentRow, "show_on_build_story">),
+        show_on_build_story: false,
+      })),
+      errorMessage: null,
+    };
+  }
+
+  logServerError("[update-public-showcase-documents] docs load failed", error);
+  return { rows: null, errorMessage: "Dokumente konnten nicht geladen werden." };
+}
 
 export async function updatePublicShowcaseDocuments(
   input: UpdatePublicShowcaseDocumentsInput,
@@ -57,6 +108,13 @@ export async function updatePublicShowcaseDocuments(
 
     if (!vehicleId) {
       return { status: "error", message: "Fahrzeug fehlt." };
+    }
+
+    if (isDemoActiveTag(tagUuid) || vehicleId === MOCK_DEMO_VEHICLE_ID) {
+      return {
+        status: "error",
+        message: "Demo-Dokumente können im Profil nicht geändert werden.",
+      };
     }
 
     const { isConfigured } = getSupabaseEnv();
@@ -105,18 +163,13 @@ export async function updatePublicShowcaseDocuments(
       };
     }
 
-    const { data: docs, error: docsError } = await admin
-      .from("documents")
-      .select(
-        "id, line_items, invoice_number, category, file_url, show_on_build_story",
-      )
-      .eq("vehicle_id", vehicleId);
+    const { rows: docs, errorMessage: docsLoadError } =
+      await loadShowcaseDocumentRows(admin, vehicleId);
 
-    if (docsError) {
-      logServerError("[update-public-showcase-documents] docs load failed", docsError);
+    if (docsLoadError || !docs) {
       return {
         status: "error",
-        message: "Dokumente konnten nicht geladen werden.",
+        message: docsLoadError ?? "Dokumente konnten nicht geladen werden.",
       };
     }
 

@@ -111,6 +111,7 @@ function normalizeDocument(
       ? parseApprovalFields(doc.approval_fields)
       : null,
     show_on_public_showcase: doc.show_on_public_showcase === true,
+    show_on_build_story: doc.show_on_build_story === true,
   };
 }
 
@@ -202,24 +203,50 @@ function usesLightDocumentNormalize(load?: TagDocumentLoad): boolean {
   return load.columns === "invoice" || load.columns === "showcase";
 }
 
-async function resolveMockTag(uuid: string): Promise<TagScanResult | null> {
+function applyMockDocumentLoad(
+  documents: Document[],
+  load?: TagDocumentLoad,
+): Document[] {
+  const effectiveLoad = load ?? { mode: "all" as const, columns: "list" as const };
+  if (effectiveLoad.mode === "none") {
+    return [];
+  }
+
+  let filtered = documents;
+  if (effectiveLoad.mode === "types") {
+    const allowed = new Set(effectiveLoad.types);
+    filtered = documents.filter((doc) => allowed.has(doc.type));
+  }
+
+  const light = usesLightDocumentNormalize(effectiveLoad);
+  return filtered
+    .map((doc) => normalizeDocument(doc, { light }))
+    .filter((doc): doc is Document => doc !== null);
+}
+
+async function resolveMockTag(
+  uuid: string,
+  load?: TagDocumentLoad,
+): Promise<TagScanResult | null> {
   const mock = getMockTagScan(uuid);
   if (!mock) return null;
   if (!mock.vehicle) return mock;
 
   const uploaded = await getMockUploadedDocuments(mock.vehicle.id);
+  const merged = [...uploaded, ...mock.documents];
   return {
     ...mock,
-    documents: [...uploaded, ...mock.documents],
+    documents: applyMockDocumentLoad(merged, load),
   };
 }
 
+export function isMockTagUuid(uuid: string): boolean {
+  const normalized = uuid.trim();
+  return (Object.values(MOCK_TAG_UUIDS) as string[]).includes(normalized);
+}
+
 function isDemoTagUuid(uuid: string): boolean {
-  return (
-    uuid === MOCK_TAG_UUIDS.active ||
-    uuid === MOCK_TAG_UUIDS.unclaimed ||
-    uuid === MOCK_TAG_UUIDS.aulitzky
-  );
+  return isMockTagUuid(uuid);
 }
 
 async function resolveTagWithRpc(
@@ -338,10 +365,15 @@ async function getTagByUuidUncached(
   const normalized = uuid.trim();
   if (!normalized) return null;
 
-  // Showcase UUIDs always use the in-repo mock twin (Toyota Supra A80) so
-  // /v/demo-active-tag stays consistent even when the same uuid exists in prod DB.
+  // Showcase UUIDs always use the in-repo mock twin so demo routes stay
+  // consistent even when the same uuid exists in prod DB.
   if (isDemoTagUuid(normalized)) {
-    return resolveMockTag(normalized);
+    const mock = await resolveMockTag(normalized, options?.documents);
+    if (!mock) return null;
+    const load = options?.documents ?? { mode: "all", columns: "list" };
+    return normalizeScanResult(mock, {
+      lightDocuments: usesLightDocumentNormalize(load),
+    });
   }
 
   const { isConfigured } = getSupabaseEnv();

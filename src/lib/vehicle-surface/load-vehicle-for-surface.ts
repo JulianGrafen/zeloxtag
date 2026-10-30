@@ -7,6 +7,7 @@ import { getActiveTagUuidForVehicle } from "@/lib/tags/get-active-tag-uuid-for-v
 import {
   getTagByUuid,
   hydrateTagScanWithSessionDocuments,
+  isMockTagUuid,
   type TagLoadOptions,
 } from "@/lib/tags/get-tag-by-uuid";
 import { loadVehicleProjectionMaybeSingle } from "@/lib/vehicles/load-vehicle-projection";
@@ -35,6 +36,17 @@ async function loadVehicleScanByVehicleIdUncached(
   }
 
   const linkedTagUuid = await getActiveTagUuidForVehicle(vehicle.id);
+  if (linkedTagUuid && isMockTagUuid(linkedTagUuid)) {
+    const mockScan = await getTagByUuid(linkedTagUuid, load);
+    if (mockScan?.vehicle) {
+      return {
+        tag: { ...mockScan.tag, vehicle_id: vehicle.id },
+        vehicle,
+        documents: mockScan.documents,
+      };
+    }
+  }
+
   if (linkedTagUuid) {
     const tagged = await getTagByUuid(linkedTagUuid, load);
     if (tagged?.vehicle?.id === vehicle.id) {
