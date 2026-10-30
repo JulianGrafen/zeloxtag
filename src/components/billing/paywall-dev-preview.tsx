@@ -9,6 +9,7 @@ import {
   getPaywallPersonalization,
   formatPaywallVehicleLabel,
   paywallVehicleHeroFromContext,
+  type PaywallVehicleHeroContext,
 } from "@/lib/billing/paywall-personalization";
 import { resolveVehicleCatalogImage } from "@/lib/vehicles/vehicle-image";
 import type { ZeloxPrimaryGoal } from "@/lib/onboarding/primary-goal";
@@ -59,6 +60,9 @@ export function PaywallDevPreview() {
   const [goal, setGoal] = useState<ZeloxPrimaryGoal>(initialGoal);
   const [variant, setVariant] = useState<PaywallVariant>(initialVariant);
   const [modalOpen, setModalOpen] = useState(true);
+  const [omitVehicleHero, setOmitVehicleHero] = useState(
+    () => searchParams.get("noHero") === "1",
+  );
 
   const preview = useMemo(
     () =>
@@ -78,10 +82,16 @@ export function PaywallDevPreview() {
     [goal],
   );
 
-  const previewVehicleHero = useMemo(
-    () => paywallVehicleHeroFromContext(triggerContext),
-    [triggerContext],
-  );
+  const previewVehicleHero = useMemo((): PaywallVehicleHeroContext | null => {
+    if (omitVehicleHero) {
+      return {
+        vehicleImage: null,
+        vehicleImageFrameless: false,
+        vehicleImageAlt: "Kein Fahrzeugfoto",
+      };
+    }
+    return paywallVehicleHeroFromContext(triggerContext);
+  }, [triggerContext, omitVehicleHero]);
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-8 px-4 py-10">
@@ -114,6 +124,21 @@ export function PaywallDevPreview() {
               {item.label}
             </button>
           ))}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setOmitVehicleHero((value) => !value)}
+            className={cn(
+              "rounded-full border px-3 py-1.5 text-[0.78rem] font-medium transition-colors",
+              omitVehicleHero
+                ? "border-rose-500/50 bg-rose-500/15 text-rose-200"
+                : "border-[color:var(--vd-border)] text-[color:var(--vd-muted)]",
+            )}
+          >
+            Ohne Foto
+          </button>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -162,6 +187,7 @@ export function PaywallDevPreview() {
         feature={FEATURE.SCAN_AI_RECEIPT}
         variant={variant}
         triggerContext={triggerContext}
+        vehicleHero={previewVehicleHero}
         tagUuid={PREVIEW_TAG}
         onClose={() => setModalOpen(false)}
       />
