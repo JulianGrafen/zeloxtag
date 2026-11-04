@@ -9,6 +9,10 @@ import {
 } from "@/lib/security/api-guard";
 import { isUploadFile } from "@/lib/security/file-upload";
 import { logServerError } from "@/lib/security/public-error";
+import {
+  createAdminClient,
+  isSupabaseAdminConfigured,
+} from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
@@ -18,6 +22,10 @@ import {
   vehicleEngineSoundCandidatePaths,
   vehicleEngineSoundObjectPath,
 } from "@/lib/vehicles/engine-sound-constants";
+import {
+  ensureVehicleEngineSoundBucket,
+  isStorageMimeRejected,
+} from "@/lib/vehicles/ensure-engine-sound-bucket";
 import { ENGINE_SOUND_MAX_BASE64_LENGTH } from "@/lib/vehicles/engine-sound-json-upload";
 import { validateEngineSoundUploadBytes } from "@/lib/vehicles/engine-sound-validation";
 import {
@@ -303,30 +311,53 @@ export async function POST(request: NextRequest) {
       return jsonError(403, "Nur der Fahrzeughalter darf hochladen.", "forbidden");
     }
 
-    const objectPath = vehicleEngineSoundObjectPath(vehicleId, validated.mime);
-
-    const { error: uploadError } = await supabase.storage
-      .from(ENGINE_SOUND_BUCKET)
-      .upload(objectPath, bytes, {
-        contentType: validated.mime,
-        upsert: true,
-        cacheControl: "3600",
-      });
-
-    if (uploadError) {
-      console.error("[vehicle-engine-sound] storage upload failed", uploadError);
+    if (!isSupabaseAdminConfigured()) {
       return jsonError(
-        500,
-        "Engine-Sound konnte nicht gespeichert werden.",
-        "storage_error",
+        503,
+        "Soundcheck-Speicher ist nicht vollständig konfiguriert.",
+        "config",
       );
+    }
+
+    const storageMime = validated.mime;
+    const objectPath = vehicleEngineSoundObjectPath(vehicleId, storageMime);
+
+    const admin = createAdminClient();
+    await ensureVehicleEngineSoundBucket(admin);
+
+    async function storeSound(): Promise<string | null> {
+      const { error: uploadError } = await admin.storage
+        .from(ENGINE_SOUND_BUCKET)
+        .upload(objectPath, bytes, {
+          contentType: storageMime,
+          upsert: true,
+          cacheControl: "3600",
+        });
+
+      if (!uploadError) return null;
+
+      logServerError("[vehicle-engine-sound] storage upload failed", uploadError);
+      return uploadError.message ?? "storage_failed";
+    }
+
+    let storageError = await storeSound();
+    if (storageError && isStorageMimeRejected(storageError)) {
+      await ensureVehicleEngineSoundBucket(admin);
+      storageError = await storeSound();
+    }
+
+    if (storageError) {
+      const friendly = isStorageMimeRejected(storageError)
+        ? "Speicher lehnt das Audio-Format ab — bitte in 1 Minute erneut versuchen."
+        : "Engine-Sound konnte nicht gespeichert werden.";
+      return jsonError(500, friendly, "storage_error");
     }
 
     const stalePaths = vehicleEngineSoundCandidatePaths(vehicleId).filter(
       (path) => path !== objectPath,
     );
     if (stalePaths.length > 0) {
-      await supabase.storage
+      await admin.storage
         .from(ENGINE_SOUND_BUCKET)
         .remove(stalePaths)
         .catch(() => undefined);
@@ -410,8 +441,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     const storedPath = resolveStoredEngineSoundPath(vehicleId, vehicle.sound_url);
-    if (storedPath) {
-      await supabase.storage
+    if (storedPath && isSupabaseAdminConfigured()) {
+      const admin = createAdminClient();
+      await admin.storage
         .from(ENGINE_SOUND_BUCKET)
         .remove([storedPath])
         .catch(() => undefined);

@@ -2,10 +2,6 @@ import { measureEngineSoundDurationSeconds } from "@/lib/vehicles/engine-sound-d
 
 const MEASURE_TIMEOUT_MS = 12_000;
 
-function isUsableDuration(duration: number): boolean {
-  return Number.isFinite(duration) && duration > 0;
-}
-
 /**
  * Browser-only duration probe for engine sound uploads (incl. WAV).
  */
@@ -58,9 +54,10 @@ export async function measureAudioFileDurationSeconds(
     };
 
     const tryResolveDuration = () => {
-      if (isUsableDuration(audio.duration)) {
-        finish(audio.duration);
+      if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+        return;
       }
+      finish(audio.duration);
     };
 
     audio.addEventListener("loadedmetadata", tryResolveDuration);
