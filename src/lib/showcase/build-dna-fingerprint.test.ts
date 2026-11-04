@@ -16,6 +16,8 @@ function mod(id: string, label: string): PublicModification {
     date: null,
     vendor: null,
     source: "manual",
+    imageSrc: null,
+    amount: null,
   };
 }
 

@@ -16,6 +16,8 @@ function mod(
     date: null,
     vendor: null,
     source: "manual",
+    imageSrc: null,
+    amount: null,
   };
 }
 

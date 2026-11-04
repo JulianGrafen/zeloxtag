@@ -8,6 +8,7 @@ import { documentMediaKind } from "@/lib/documents/viewable-url";
 import { resolvePublicDynoChartHref } from "@/lib/vehicles/dyno-chart-constants";
 import { resolvePublicEngineSoundHref } from "@/lib/vehicles/engine-sound-constants";
 import { filterPublicShowcaseDocuments, isShowcaseModificationDocument } from "@/lib/vehicles/public-showcase-documents";
+import { hasStoredModificationImage } from "@/lib/vehicles/build-story-document";
 import { buildShowcaseBuildDnaFingerprint } from "@/lib/showcase/build-dna-fingerprint";
 import { buildBuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
 import { isBuildDnaEligible } from "@/lib/showcase/build-dna-eligibility";
@@ -49,6 +50,9 @@ export type PublicModification = {
   date: string | null;
   vendor: string | null;
   source: "invoice" | "manual";
+  /** Umbau photo via `/api/public/vehicle/.../file` when stored on the document. */
+  imageSrc: string | null;
+  amount: number | null;
 };
 
 export type PublicModificationGroup = {
@@ -274,11 +278,38 @@ function publicModCategoryLabel(
   return PUBLIC_MOD_CATEGORY_LABELS[trimmed] ?? "Umbauten";
 }
 
+function resolveModificationDocument(
+  modId: string,
+  documents: Document[],
+): Document | null {
+  const direct = documents.find((doc) => doc.id === modId);
+  if (direct) return direct;
+
+  let best: Document | null = null;
+  let bestPrefixLen = 0;
+  for (const doc of documents) {
+    if (modId === doc.id || modId.startsWith(`${doc.id}-`)) {
+      if (doc.id.length > bestPrefixLen) {
+        best = doc;
+        bestPrefixLen = doc.id.length;
+      }
+    }
+  }
+  return best;
+}
+
 function mapModificationsToPublic(
   modifications: ReturnType<typeof extractVehicleModifications>,
+  vehicleId: string,
+  documents: Document[],
 ): PublicModification[] {
   return modifications.map((mod) => {
     const source = mod.source === "manual" ? "manual" : "invoice";
+    const doc = resolveModificationDocument(mod.id, documents);
+    const imageSrc =
+      doc && hasStoredModificationImage(doc)
+        ? showcaseGalleryFileUrl(vehicleId, doc.file_url.trim())
+        : null;
     return {
       id: mod.id,
       label: mod.partName,
@@ -286,6 +317,8 @@ function mapModificationsToPublic(
       date: mod.date,
       vendor: mod.manufacturer,
       source,
+      imageSrc,
+      amount: mod.amount,
     };
   });
 }
@@ -326,10 +359,12 @@ export function buildPublicShowcasePayload(
 
   const modifications = mapModificationsToPublic(
     extractVehicleModifications(publicDocs, {
-      hideFinancials: true,
+      hideFinancials: hide_financials,
       includeOptedInInvoices: true,
       respectLineItemShowcase: true,
     }).filter((mod) => mod.source !== "abe"),
+    vehicle.id,
+    publicDocs,
   );
 
   const photos = collectGalleryPhotos(vehicle, documents);

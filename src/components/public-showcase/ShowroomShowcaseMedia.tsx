@@ -19,8 +19,8 @@ type ShowroomShowcaseMediaProps = {
 };
 
 /**
- * Umbauten and dyno chart in one grouped block — same rhythm as garage showcase
- * settings (IOS grouped list). Soundcheck lives above in ShowroomEngineSoundcheck.
+ * Umbauten carousel + optional dyno in a grouped block.
+ * Soundcheck lives above in ShowroomEngineSoundcheck.
  */
 export function ShowroomShowcaseMedia({
   profile,
@@ -36,19 +36,23 @@ export function ShowroomShowcaseMedia({
   }
 
   return (
-    <div>
-      <h2 className={showroom.sectionLabel}>Showcase</h2>
-      <ShowroomGroup>
-        {hasModsSection ? (
-          <ShowroomMods
-            modifications={modifications}
-            partnerBranding={partnerBranding}
-            embedded
-            defaultOpen={modsDefaultOpen}
-          />
-        ) : null}
-        {hasDyno ? <ShowroomDyno profile={profile} embedded /> : null}
-      </ShowroomGroup>
+    <div className="flex flex-col gap-5">
+      {hasModsSection ? (
+        <ShowroomMods
+          modifications={modifications}
+          partnerBranding={partnerBranding}
+          embedded
+          defaultShowAll={modsDefaultOpen}
+        />
+      ) : null}
+      {hasDyno ? (
+        <div>
+          <h2 className={showroom.sectionLabel}>Showcase</h2>
+          <ShowroomGroup>
+            <ShowroomDyno profile={profile} embedded />
+          </ShowroomGroup>
+        </div>
+      ) : null}
     </div>
   );
 }
