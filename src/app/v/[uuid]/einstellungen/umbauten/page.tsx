@@ -11,8 +11,8 @@ interface UmbautenSettingsPageProps {
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Chronik & Rechnungen · ZeloxTag",
-    description: "Build-Chronik und Rechnungen im öffentlichen Showcase verwalten.",
+    title: "Umbauten & Belege · ZeloxTag",
+    description: "Umbauten erfassen, Belege auswählen und die Build-Chronik freigeben.",
   };
 }
 
@@ -29,7 +29,7 @@ export default async function VehicleUmbautenSettingsPage({
       <VehicleSettingsSubpageShell
         tagUuid={tagUuid}
         vehicleSurfaceScope={scope}
-        title="Chronik & Rechnungen"
+        title="Umbauten & Belege"
       >
         <VehicleShowcaseModificationsSettings
           tagUuid={tagUuid}

@@ -1,9 +1,8 @@
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { IOSListPage } from "@/components/ui/ios";
 import { VehicleSettingsView } from "@/components/vehicles/vehicle-settings-view";
 import { requireVehicleSurfaceOwner } from "@/lib/auth/require-vehicle-access";
 import { loadShowcaseGalleryDocuments } from "@/lib/documents/load-showcase-gallery";
@@ -19,7 +18,7 @@ interface VehicleSettingsPageProps {
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Showcase · ZeloxTag",
-    description: "Öffentlicher Showcase und Verkaufs-Exposé verwalten.",
+    description: "Fahrzeugdaten, Showcase-Inhalte, Sichtbarkeit und Exposé verwalten.",
   };
 }
 
@@ -59,22 +58,11 @@ export default async function VehicleSettingsPage({
 
   return (
     <AppShell showNavbar={false}>
-      <div className="ios-settings-surface min-h-dvh w-full bg-[#000000]">
-      <section className="mx-auto flex w-full max-w-lg flex-col gap-5 px-4 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5">
-        <Link
-          href={`${vehicleSurfaceHref(scope)}`}
-          className="inline-flex w-fit items-center gap-2 rounded-full border border-[color:var(--vd-border)] bg-[color:var(--vd-surface)] px-3 py-2 text-[0.78rem] font-medium text-[color:var(--vd-text)] shadow-[var(--vd-shadow-sm)]"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Dashboard
-        </Link>
-
-        <header>
-          <h1 className="font-[family-name:var(--font-display)] text-[1.65rem] font-semibold tracking-[-0.035em] text-[color:var(--vd-text)]">
-            Showcase
-          </h1>
-        </header>
-
+      <IOSListPage
+        title="Showcase"
+        backHref={vehicleSurfaceHref(scope)}
+        backLabel="Dashboard"
+      >
         <VehicleSettingsView
           surfaceScope={scope}
           vehicle={vehicle}
@@ -85,8 +73,7 @@ export default async function VehicleSettingsPage({
           hasLinkedTag={Boolean(scope.linkedTagUuid?.trim())}
           weeklyRank={weeklyRank}
         />
-      </section>
-      </div>
+      </IOSListPage>
     </AppShell>
   );
 }

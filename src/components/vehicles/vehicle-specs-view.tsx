@@ -285,6 +285,7 @@ export function VehicleSpecsView({
           iconTone="blue"
           emphasis="navigation"
           label="Fahrzeugbild"
+          sublabel="Titelbild für Dashboard und Showcase"
           value={profilePhotoUrl ? "Hinterlegt" : "Kein Foto"}
         />
       </InsetGroupedCard>
@@ -449,7 +450,10 @@ export function VehicleSpecsView({
             />
           </InsetGroupedCard>
 
-          <InsetGroupedCard header="Öffentlich">
+          <InsetGroupedCard
+            header="Social"
+            footer="Wird im öffentlichen Showcase und auf Story-Karten verlinkt."
+          >
             <SpecInputRow
               id="spec-instagram"
               label="Instagram"
@@ -460,7 +464,10 @@ export function VehicleSpecsView({
             />
           </InsetGroupedCard>
 
-          <InsetGroupedCard header="Spezifikationen">
+          <InsetGroupedCard
+            header="Spezifikationen"
+            footer="Serienstand und Besonderheiten. Umbauten erfasst du unter Showcase → Umbauten & Belege."
+          >
             <SpecTextArea
               rows={3}
               aria-label="Spezifikationen"

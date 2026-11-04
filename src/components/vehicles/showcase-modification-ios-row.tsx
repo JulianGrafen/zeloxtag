@@ -92,33 +92,32 @@ export function ShowcaseModificationIosRow({
           <ChevronRight className="h-4 w-4" aria-hidden />
         </PressableLink>
       </div>
-      <div className="pb-1">
-        <div className="flex items-center justify-between gap-3 px-4 py-2">
-          <div className="min-w-0">
-            <p className="text-[14px] text-white">Im Showcase</p>
-            <p className="text-[12px] text-zinc-500">Umbau-Liste im Profil</p>
-          </div>
+      <div className="grid grid-cols-2 gap-2 px-4 pb-3">
+        <label className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl bg-white/[0.04] px-3">
+          <span className="text-[13px] font-medium text-white">Im Profil</span>
           <IOSSwitch
             checked={showcaseChecked}
             onCheckedChange={onToggleShowcase}
             disabled={disabled}
-            ariaLabel="Im Showcase"
+            ariaLabel="Im Profil zeigen"
           />
-        </div>
-        <div className="flex items-center justify-between gap-3 px-4 py-2">
-          <div className="min-w-0">
-            <p className="text-[14px] text-white">In Chronik</p>
-            <p className="text-[12px] text-zinc-500">
-              {chronikEligible ? "Build-Story Timeline" : "Foto nötig"}
-            </p>
-          </div>
+        </label>
+        <label className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl bg-white/[0.04] px-3">
+          <span className="min-w-0">
+            <span className="block text-[13px] font-medium text-white">
+              In Chronik
+            </span>
+            {!chronikEligible ? (
+              <span className="block text-[11px] text-zinc-500">Foto nötig</span>
+            ) : null}
+          </span>
           <IOSSwitch
             checked={chronikChecked}
             onCheckedChange={onToggleChronik}
             disabled={disabled || !chronikEligible}
-            ariaLabel="In Chronik"
+            ariaLabel="In Build-Chronik zeigen"
           />
-        </div>
+        </label>
       </div>
     </div>
   );
