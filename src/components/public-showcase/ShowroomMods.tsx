@@ -17,15 +17,22 @@ import { cn } from "@/lib/utils";
 
 import { ModBadge } from "./ModBadge";
 import { ShowcasePartnerVendorBadge } from "./ShowcasePartnerVendorBadge";
+import { ShowroomDisclosure } from "./ShowroomDisclosure";
+import { ShowroomGroup } from "./ShowroomGroup";
 import { showroomModLabelTypography } from "./showroom-mod-typography";
 import { showroom } from "./showroom-styles";
+
+/** True when at least one umbau has a showcase photo — then we show the carousel, not the text list. */
+export function modificationsHaveShowcaseImages(
+  modifications: readonly Pick<PublicModification, "imageSrc">[],
+): boolean {
+  return modifications.some((mod) => Boolean(mod.imageSrc?.trim()));
+}
 
 type ShowroomModsProps = {
   modifications: PublicModification[];
   partnerBranding?: PublicShowcaseB2bPartner | null;
   embedded?: boolean;
-  /** Demo — expand full list on first paint. */
-  defaultShowAll?: boolean;
 };
 
 /** Compact month/year badge on carousel cards (e.g. `03/26`). */
@@ -197,25 +204,28 @@ export function ShowroomMods({
   modifications,
   partnerBranding = null,
   embedded = false,
-  defaultShowAll = false,
 }: ShowroomModsProps) {
   const { formatMoney } = useRegionalFormatters();
-  const [showAll, setShowAll] = useState(defaultShowAll);
+  const hasGalleryImages = modificationsHaveShowcaseImages(modifications);
+  const carouselMods = hasGalleryImages
+    ? modifications.filter((mod) => Boolean(mod.imageSrc?.trim()))
+    : modifications;
+  const [listOpen, setListOpen] = useState(false);
 
   if (modifications.length === 0) {
     return null;
   }
 
   const count = modifications.length;
-  const countLabel =
-    count === 1 ? "Alle 1 ansehen" : `Alle ${count} ansehen`;
+  const countSubtitle =
+    count === 1 ? "1 Eintrag" : `${count} Einträge`;
 
   const carousel = (
     <div
       className="-mx-4 flex gap-3 overflow-x-auto overscroll-x-contain px-4 pb-1 snap-x snap-mandatory no-scrollbar"
       aria-label="Umbauten"
     >
-      {modifications.map((mod) => (
+      {carouselMods.map((mod) => (
         <ShowroomModCarouselCard
           key={mod.id}
           mod={mod}
@@ -226,30 +236,32 @@ export function ShowroomMods({
     </div>
   );
 
-  const section = (
+  const listDisclosure = (
+    <ShowroomGroup>
+      <ShowroomDisclosure
+        title="Umbauten"
+        subtitle={countSubtitle}
+        open={listOpen}
+        onToggle={() => setListOpen((open) => !open)}
+        panelId="showroom-mods-disclosure"
+      >
+        <UmbautenList
+          modifications={modifications}
+          partnerBranding={partnerBranding}
+        />
+      </ShowroomDisclosure>
+    </ShowroomGroup>
+  );
+
+  const section = hasGalleryImages ? (
     <section className="min-w-0">
-      <div className="mb-3 flex items-end justify-between gap-3 px-1">
+      <div className="mb-3 px-1">
         <h2 className={showroom.sectionTitle}>Umbauten</h2>
-        {!showAll ? (
-          <button
-            type="button"
-            onClick={() => setShowAll(true)}
-            className="shrink-0 text-[0.82rem] font-medium text-white/80 underline-offset-2 transition hover:text-white hover:underline"
-          >
-            {countLabel}
-          </button>
-        ) : null}
       </div>
       {carousel}
-      {showAll ? (
-        <div className={cn(showroom.group, "mt-4")}>
-          <UmbautenList
-            modifications={modifications}
-            partnerBranding={partnerBranding}
-          />
-        </div>
-      ) : null}
     </section>
+  ) : (
+    <section className="min-w-0">{listDisclosure}</section>
   );
 
   if (embedded) {

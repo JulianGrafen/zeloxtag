@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { formatShowroomModBadgeDate } from "@/components/public-showcase/ShowroomMods";
+import {
+  formatShowroomModBadgeDate,
+  modificationsHaveShowcaseImages,
+} from "@/components/public-showcase/ShowroomMods";
 
 describe("formatShowroomModBadgeDate", () => {
   it("formats ISO dates as MM/YY", () => {
@@ -11,5 +14,25 @@ describe("formatShowroomModBadgeDate", () => {
   it("returns null for invalid input", () => {
     expect(formatShowroomModBadgeDate(null)).toBeNull();
     expect(formatShowroomModBadgeDate("invalid")).toBeNull();
+  });
+});
+
+describe("modificationsHaveShowcaseImages", () => {
+  it("is false when no mod has imageSrc", () => {
+    expect(
+      modificationsHaveShowcaseImages([
+        { imageSrc: null },
+        { imageSrc: "  " },
+      ]),
+    ).toBe(false);
+  });
+
+  it("is true when any mod has imageSrc", () => {
+    expect(
+      modificationsHaveShowcaseImages([
+        { imageSrc: null },
+        { imageSrc: "/api/vehicle/x/showcase-file?src=a.jpg" },
+      ]),
+    ).toBe(true);
   });
 });

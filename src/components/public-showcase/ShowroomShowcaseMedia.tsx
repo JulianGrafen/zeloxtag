@@ -15,7 +15,6 @@ type ShowroomShowcaseMediaProps = {
   profile: PublicShowcaseProfile;
   modifications: PublicModification[];
   partnerBranding?: PublicShowcaseB2bPartner | null;
-  modsDefaultOpen?: boolean;
 };
 
 /**
@@ -26,7 +25,6 @@ export function ShowroomShowcaseMedia({
   profile,
   modifications,
   partnerBranding = null,
-  modsDefaultOpen = false,
 }: ShowroomShowcaseMediaProps) {
   const hasModsSection = modifications.length > 0;
   const hasDyno = Boolean(profile.dynoChartUrl);
@@ -42,7 +40,6 @@ export function ShowroomShowcaseMedia({
           modifications={modifications}
           partnerBranding={partnerBranding}
           embedded
-          defaultShowAll={modsDefaultOpen}
         />
       ) : null}
       {hasDyno ? (
