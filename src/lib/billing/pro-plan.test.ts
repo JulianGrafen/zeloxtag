@@ -70,9 +70,9 @@ describe("pro plan copy", () => {
   });
 
   it("frames paywall timeline around free scans and Pro", () => {
-    expect(FREE_AI_INVOICE_SCAN_LIMIT).toBe(2);
+    expect(FREE_AI_INVOICE_SCAN_LIMIT).toBe(3);
     expect(PRO_PAYWALL_TRIAL_TIMELINE[0]?.text).toContain("Free:");
-    expect(PRO_FREE_KI_SCAN_HOOK).toContain("2× Rechnung");
+    expect(PRO_FREE_KI_SCAN_HOOK).toContain("3× Rechnung");
   });
 
   it("lists benefit-led Pro arguments", () => {

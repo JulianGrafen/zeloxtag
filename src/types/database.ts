@@ -774,6 +774,39 @@ export type Database = {
           },
         ];
       };
+      tag_scan_events: {
+        Row: {
+          id: string;
+          vehicle_id: string;
+          tag_id: string | null;
+          scanned_at: string;
+          city: string | null;
+          region: string | null;
+          country: string | null;
+          notified_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          vehicle_id: string;
+          tag_id?: string | null;
+          scanned_at?: string;
+          city?: string | null;
+          region?: string | null;
+          country?: string | null;
+          notified_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          vehicle_id?: string;
+          tag_id?: string | null;
+          scanned_at?: string;
+          city?: string | null;
+          region?: string | null;
+          country?: string | null;
+          notified_at?: string | null;
+        };
+        Relationships: [];
+      };
       service_records: {
         Row: ServiceRecordRow;
         Insert: {

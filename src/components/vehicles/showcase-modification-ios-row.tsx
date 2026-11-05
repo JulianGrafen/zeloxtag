@@ -94,12 +94,12 @@ export function ShowcaseModificationIosRow({
       </div>
       <div className="grid grid-cols-2 gap-2 px-4 pb-3">
         <label className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl bg-white/[0.04] px-3">
-          <span className="text-[13px] font-medium text-white">Im Profil</span>
+          <span className="text-[13px] font-medium text-white">Im Showcase</span>
           <IOSSwitch
             checked={showcaseChecked}
             onCheckedChange={onToggleShowcase}
             disabled={disabled}
-            ariaLabel="Im Profil zeigen"
+            ariaLabel="Im Showcase zeigen"
           />
         </label>
         <label className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl bg-white/[0.04] px-3">

@@ -59,11 +59,11 @@ describe("dashboard tour persistence", () => {
     expect(owner.some((step) => step.id === "timeline")).toBe(true);
     expect(owner.some((step) => step.id === "werkstatt")).toBe(true);
     expect(owner.some((step) => step.id === "showcase")).toBe(true);
-    expect(owner.some((step) => step.id === "account")).toBe(true);
+    expect(owner.some((step) => step.id === "modifications")).toBe(true);
     expect(contributor.some((step) => step.id === "scan")).toBe(true);
     expect(contributor.some((step) => step.id === "timeline")).toBe(true);
     expect(owner[0]?.id).toBe("welcome");
-    expect(owner.at(-1)?.id).toBe("account");
+    expect(owner.at(-1)?.id).toBe("werkstatt");
   });
 
   it("reorders owner steps and welcome copy by primary goal", () => {
@@ -71,18 +71,19 @@ describe("dashboard tour persistence", () => {
     expect(werterhalt.map((s) => s.id)).toEqual([
       "welcome",
       "header",
-      "timeline",
+      "modifications",
       "showcase",
+      "timeline",
       "scan",
       "invoices",
       "werkstatt",
-      "account",
     ]);
     expect(werterhalt[0]?.body).toContain("Werterhalt");
 
     const showcase = getDashboardTourSteps("owner", "showcase");
     expect(showcase[1]?.id).toBe("header");
-    expect(showcase[2]?.id).toBe("showcase");
+    expect(showcase[2]?.id).toBe("modifications");
+    expect(showcase[3]?.id).toBe("showcase");
     expect(showcase[0]?.body).toContain("Visitenkarte");
 
     const documents = getDashboardTourSteps("owner", "documents");

@@ -171,17 +171,16 @@ export function VehicleShowcaseModificationsSettings({
     modifications.length > 0
       ? `${modifications.length} ${modifications.length === 1 ? "Umbau" : "Umbauten"}${
           selectedModificationCount > 0
-            ? ` · ${selectedModificationCount} im Profil`
+            ? ` · ${selectedModificationCount} im Showcase`
             : ""
-        }. „Im Profil“ zeigt den Umbau in der Umbau-Liste, „In Chronik“ in der Build-Timeline (Foto nötig).`
-      : "Noch keine Umbauten. Erfasse oben deinen ersten Umbau mit Foto.";
+        }. Im Showcase mit Fotos, Preise bleiben privat.`
+      : "Noch keine Umbauten.";
 
   return (
     <div className="flex flex-col gap-6">
       {canEdit ? (
         <InsetGroupedCard
           header="Hinzufügen"
-          footer="Rechnungen werden automatisch ausgelesen, einzelne Positionen kannst du danach fürs Profil auswählen."
         >
           <InsetListRow
             href={umbautenHref}
@@ -189,7 +188,6 @@ export function VehicleShowcaseModificationsSettings({
             iconTone="amber"
             emphasis="navigation"
             label="Umbau mit Foto"
-            sublabel="Manuell erfassen, ideal für die Chronik"
             chevron
           />
           <InsetListRow
@@ -198,7 +196,6 @@ export function VehicleShowcaseModificationsSettings({
             iconTone="blue"
             emphasis="navigation"
             label="Rechnung scannen"
-            sublabel="Teile und Kosten automatisch erkennen"
             chevron
             isLast
           />
@@ -239,7 +236,7 @@ export function VehicleShowcaseModificationsSettings({
       {hasProfileContent ? (
         <IOSGroupedList
           headerTitle="Weitere Einträge & Rechnungen"
-          footerText="Wähle, welche Belege und Positionen im Profil erscheinen. Beträge blendest du unter Öffentliches Profil aus."
+          footerText="Positionen im Showcase mit Fotos. Preise zeigst du nur, wenn du sie unter Öffentliches Profil freigibst."
         >
           {profileGroups.map((group, index) => (
             <ShowcaseDocCollapsibleGroup

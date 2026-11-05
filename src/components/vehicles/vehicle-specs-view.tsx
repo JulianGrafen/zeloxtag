@@ -73,7 +73,6 @@ export function VehicleSpecsView({
   const scope =
     vehicleSurfaceScope ??
     vehicleSurfaceScopeFromContext(tagUuid, vehicle.id);
-  const dashboardHref = vehicleSurfaceHref(scope);
   const fahrzeugbildHref = vehicleSurfaceHref(scope, "daten/fahrzeugbild");
   const initialSpecs = parseVehicleTechSpecs(vehicle.tech_specs);
   const [make, setMake] = useState(vehicle.make);
@@ -269,7 +268,8 @@ export function VehicleSpecsView({
     <IOSListPage
       title="Fahrzeugdaten"
       subtitle={title}
-      backHref={dashboardHref}
+      backHref={vehicleSurfaceHref(scope, "einstellungen")}
+      backLabel="Mein Fahrzeug"
       overlay={saveBar}
     >
       {error ? (
@@ -285,7 +285,6 @@ export function VehicleSpecsView({
           iconTone="blue"
           emphasis="navigation"
           label="Fahrzeugbild"
-          sublabel="Titelbild für Dashboard und Showcase"
           value={profilePhotoUrl ? "Hinterlegt" : "Kein Foto"}
         />
       </InsetGroupedCard>
@@ -450,10 +449,7 @@ export function VehicleSpecsView({
             />
           </InsetGroupedCard>
 
-          <InsetGroupedCard
-            header="Social"
-            footer="Wird im öffentlichen Showcase und auf Story-Karten verlinkt."
-          >
+          <InsetGroupedCard header="Social">
             <SpecInputRow
               id="spec-instagram"
               label="Instagram"
@@ -464,10 +460,7 @@ export function VehicleSpecsView({
             />
           </InsetGroupedCard>
 
-          <InsetGroupedCard
-            header="Spezifikationen"
-            footer="Serienstand und Besonderheiten. Umbauten erfasst du unter Showcase → Umbauten & Belege."
-          >
+          <InsetGroupedCard header="Notizen">
             <SpecTextArea
               rows={3}
               aria-label="Spezifikationen"
@@ -478,7 +471,7 @@ export function VehicleSpecsView({
 
           <InsetGroupedCard
             header="Wartung"
-            footer="Für die Fälligkeit auf der Ölwechsel-Seite — wird beim Registrieren übernommen und kann hier angepasst werden."
+            footer="Für die Ölwechsel-Erinnerung."
           >
             <SpecSelectRow
               id="oil-interval-km"

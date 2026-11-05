@@ -473,8 +473,8 @@ export function TagDashboardView({
           ...tile.meta,
           href: path("einstellungen"),
           subtitle: vehicle.is_public
-            ? "Öffentlich"
-            : "Privat",
+            ? "Öffentlich · Daten & Showcase"
+            : "Privat · Daten & Showcase",
         },
       };
     }
@@ -500,7 +500,8 @@ export function TagDashboardView({
     return tile;
   })
     .filter((tile) => {
-      if (tile.id === "settings") return isOwner && !demoMode;
+      // Merged into the „Fahrzeug & Showcase“ hub (Daten, Showcase, Konto).
+      if (tile.id === "settings" || tile.id === "specs") return false;
       if (tile.id === "fuel-log" || tile.id === "operating-costs") {
         return isOwner || demoMode;
       }

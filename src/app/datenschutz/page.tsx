@@ -334,6 +334,23 @@ export default function DatenschutzPage() {
         </LegalParagraph>
 
         <LegalParagraph>
+          <strong>Live-Scan: Aufruf eines Fahrzeug-QR-Codes</strong>
+        </LegalParagraph>
+        <LegalParagraph>
+          Wenn Sie den QR-Code an einem Fahrzeug scannen, speichern wir den
+          Zeitpunkt des Aufrufs sowie einen groben Ort (Stadt, Region, Land),
+          den unser Hosting-Anbieter Vercel aus Ihrer IP-Adresse ableitet. Ihre
+          IP-Adresse selbst speichern wir dabei nicht. Der Fahrzeughalter wird
+          über den Scan informiert (je nach Tarif mit Uhrzeit und Ort), erfährt
+          aber nicht, wer gescannt hat. Zur Vermeidung von Doppelzählungen wird
+          ein pseudonymer Kurzzeit-Schlüssel für höchstens 10 Minuten
+          vorgehalten. Scan-Einträge werden nach 90 Tagen automatisch gelöscht.
+          Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse
+          des Halters, zu erfahren, wann sein Fahrzeugprofil aufgerufen wird).
+          Halter können die Benachrichtigung in den Einstellungen abschalten.
+        </LegalParagraph>
+
+        <LegalParagraph>
           <strong>
             e) Datenverarbeitung bei Nutzung der App-Funktionen: Nutzung der
             Kamera für die QR-Code-Scanner-Funktion

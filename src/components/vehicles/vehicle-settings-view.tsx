@@ -26,7 +26,6 @@ import { topThreeWeeklyRankOrNull } from "@/lib/showcase/vehicle-weekly-showcase
 import type { VehicleWeeklyShowcaseRank } from "@/lib/showcase/vehicle-weekly-showcase-rank-map";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
-import { countBuildStoryChronikDocuments } from "@/lib/vehicles/build-story-owner-entries";
 import { resolveOwnerDynoChartViewUrl } from "@/lib/vehicles/dyno-chart-constants";
 import { resolveOwnerEngineSoundViewUrl } from "@/lib/vehicles/engine-sound-constants";
 import {
@@ -98,7 +97,6 @@ export function VehicleSettingsView({
   const visibleCount = [...modifications, ...manualEntries, ...invoices].filter(
     (doc) => doc.show_on_public_showcase,
   ).length;
-  const chronikCount = countBuildStoryChronikDocuments(documents);
 
   const progress = buildShowcaseSetupProgress({
     hasPhoto,
@@ -128,7 +126,7 @@ export function VehicleSettingsView({
 
   const modificationsSubtitle =
     entryCount + invoices.length === 0
-      ? "Umbauten mit Foto erfassen, Rechnungen auswählen"
+      ? "Noch keine"
       : [
           modifications.length > 0
             ? pluralize(modifications.length, "Umbau", "Umbauten")
@@ -159,14 +157,12 @@ export function VehicleSettingsView({
 
       <IOSGroupedList
         headerTitle="Fahrzeug"
-        footerText="Basis für Profil, Quartett-Werte und Exposé."
       >
         <VehicleSettingsSubmenuLink
           href={href("daten")}
           icon={Car}
           iconTone="blue"
           title="Fahrzeugdaten"
-          subtitle="Stammdaten, Leistung, Technik, Wartung"
           value={filledSpecCount > 0 ? `${filledSpecCount} Felder` : "Leer"}
         />
         <VehicleSettingsSubmenuLink
@@ -174,21 +170,19 @@ export function VehicleSettingsView({
           icon={Camera}
           iconTone="blue"
           title="Fahrzeugbild"
-          subtitle="Freigestelltes Titelbild"
           value={hasPhoto ? "Hinterlegt" : "Fehlt"}
           isLast
         />
       </IOSGroupedList>
 
       <IOSGroupedList
-        headerTitle="Showcase-Inhalte"
-        footerText="Was Besucher auf deinem öffentlichen Profil sehen."
+        headerTitle="Showcase"
       >
         <VehicleSettingsSubmenuLink
           href={href("einstellungen/umbauten")}
           icon={Wrench}
           iconTone="amber"
-          title="Umbauten & Belege"
+          title="Umbauten"
           subtitle={modificationsSubtitle}
         />
         <VehicleSettingsSubmenuLink
@@ -196,7 +190,6 @@ export function VehicleSettingsView({
           icon={Images}
           iconTone="amber"
           title="Galerie"
-          subtitle={`Bis zu ${MAX_SHOWCASE_GALLERY_PHOTOS} Fotos`}
           value={`${galleryPhotoCount}/${MAX_SHOWCASE_GALLERY_PHOTOS}`}
         />
         <VehicleSettingsSubmenuLink
@@ -204,7 +197,6 @@ export function VehicleSettingsView({
           icon={ChartSpline}
           iconTone="amber"
           title="Leistungsdiagramm"
-          subtitle="Prüfstandslauf als Bild oder PDF"
           value={hasDynoChart ? "Hinterlegt" : "Fehlt"}
         />
         <VehicleSettingsSubmenuLink
@@ -212,7 +204,6 @@ export function VehicleSettingsView({
           icon={AudioLines}
           iconTone="amber"
           title="Soundcheck"
-          subtitle="Motorsound für den Start-Button"
           value={hasSound ? "Aktiv" : "Fehlt"}
           isLast
         />
@@ -224,7 +215,6 @@ export function VehicleSettingsView({
           icon={Globe}
           iconTone="green"
           title="Öffentliches Profil"
-          subtitle="Sichtbarkeit, Build-Swipe, Finanzen"
           value={publicProfileStatusSubtitle({
             isPublic,
             showcaseSwipeOptIn: Boolean(vehicle.showcase_swipe_opt_in),
@@ -236,30 +226,20 @@ export function VehicleSettingsView({
           icon={BookOpen}
           iconTone="green"
           title="Build-Chronik"
-          subtitle={
-            chronikCount > 0
-              ? `${pluralize(chronikCount, "Eintrag", "Einträge")} in der Timeline`
-              : "Umbauten mit Foto als Timeline"
-          }
           value={vehicle.is_story_public ? "Öffentlich" : "Privat"}
         />
         <VehicleSettingsSubmenuLink
           href={href("einstellungen/story-pass")}
           icon={Share2}
           iconTone="green"
-          title="Story-Karte teilen"
-          subtitle={
-            topThree != null
-              ? `Top ${topThree} der Woche · Story 9:16 & Post 3:4`
-              : "Story 9:16 & Post 3:4 für Social"
-          }
+          title="Story teilen"
+          value={topThree != null ? `Top ${topThree}` : undefined}
           isLast
         />
       </IOSGroupedList>
 
       <IOSGroupedList
         headerTitle="Verkaufen"
-        footerText="Exposé mit Historie und Belegen für Interessenten."
       >
         <VehicleSettingsSubmenuLink
           href={href("einstellungen/expose/link")}
@@ -273,7 +253,6 @@ export function VehicleSettingsView({
           icon={FileText}
           iconTone="purple"
           title="Exposé als PDF"
-          subtitle="Druckfertig exportieren"
           isLast
         />
       </IOSGroupedList>
@@ -283,8 +262,7 @@ export function VehicleSettingsView({
           href="/settings"
           tour="konto-security-link"
           icon={ShieldCheck}
-          title="Konto & Sicherheit"
-          subtitle="2FA, Sitzung und Abmelden"
+          title="App & Konto"
           isLast
         />
       </IOSGroupedList>

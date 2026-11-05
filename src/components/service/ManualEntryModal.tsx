@@ -146,7 +146,7 @@ export function ManualEntryModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
+      className="fixed inset-0 z-[130] flex items-end justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
       style={{ background: "var(--vd-overlay)" }}
       role="presentation"
       onClick={(event) => {

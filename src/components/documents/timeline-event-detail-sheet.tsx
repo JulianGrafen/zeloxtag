@@ -57,7 +57,7 @@ export function TimelineEventDetailSheet({
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="pointer-events-auto fixed inset-0 z-[108] flex items-end justify-center bg-black/55 backdrop-blur-sm"
+          className="pointer-events-auto fixed inset-0 z-[130] flex items-end justify-center bg-black/55 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="timeline-event-detail-title"

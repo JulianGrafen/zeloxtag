@@ -17,7 +17,7 @@ interface VehicleSettingsPageProps {
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Showcase · ZeloxTag",
+    title: "Mein Fahrzeug · ZeloxTag",
     description: "Fahrzeugdaten, Showcase-Inhalte, Sichtbarkeit und Exposé verwalten.",
   };
 }
@@ -59,7 +59,7 @@ export default async function VehicleSettingsPage({
   return (
     <AppShell showNavbar={false}>
       <IOSListPage
-        title="Showcase"
+        title="Mein Fahrzeug"
         backHref={vehicleSurfaceHref(scope)}
         backLabel="Dashboard"
       >

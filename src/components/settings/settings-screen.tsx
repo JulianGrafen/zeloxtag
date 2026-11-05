@@ -18,6 +18,7 @@ export type SettingsScreenProps = {
   dashboardHref: string;
   mfaSubtitle: string;
   maintenanceEmailReminders: boolean;
+  tagScanEmailNotifications: boolean;
   deletionState: AccountDeletionState;
   hasPasswordLogin: boolean;
   membershipSection: ReactNode;
@@ -28,6 +29,7 @@ export function SettingsScreen({
   dashboardHref,
   mfaSubtitle,
   maintenanceEmailReminders,
+  tagScanEmailNotifications,
   deletionState,
   hasPasswordLogin,
   membershipSection,
@@ -59,6 +61,7 @@ export function SettingsScreen({
 
         <SettingsNotificationsSection
           maintenanceEmailReminders={maintenanceEmailReminders}
+          tagScanEmailNotifications={tagScanEmailNotifications}
         />
 
         <SettingsLegalSection

@@ -15,7 +15,7 @@ interface VehicleSettingsPageProps {
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Showcase · ZeloxTag",
+    title: "Mein Fahrzeug · ZeloxTag",
     description: "Fahrzeugdaten, Showcase-Inhalte, Sichtbarkeit und Exposé verwalten.",
   };
 }
@@ -55,7 +55,7 @@ export default async function VehicleSettingsPage({
   }
 
   return (
-    <IOSListPage title="Showcase" backHref={`/v/${uuid}`} backLabel="Dashboard">
+    <IOSListPage title="Mein Fahrzeug" backHref={`/v/${uuid}`} backLabel="Dashboard">
       <VehicleSettingsView
         surfaceScope={{ vehicleId: vehicle.id, linkedTagUuid: uuid }}
         vehicle={vehicle}

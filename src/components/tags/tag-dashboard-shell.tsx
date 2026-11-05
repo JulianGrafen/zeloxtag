@@ -18,6 +18,7 @@ import {
 } from "@/lib/documents/scan-types";
 import { prefetchSilhouetteImage } from "@/lib/vehicles/prefetch-silhouette-image";
 import { isDemoActiveTag } from "@/lib/tags/demo-showcase";
+import { LiveScanDashboardCard } from "@/components/tags/live-scan-dashboard-card";
 import {
   FEATURE,
   type FeatureFlag,
@@ -69,6 +70,7 @@ import {
   readOnboardingVehiclePhotoSkipped,
 } from "@/lib/onboarding/pending-onboarding-vehicle-photo";
 import { flushPendingOnboardingVehiclePhoto } from "@/lib/onboarding/flush-pending-onboarding-vehicle-photo";
+import { flushPendingOnboardingEngineSound } from "@/lib/onboarding/pending-onboarding-engine-sound";
 import { resolveVehicleHeroDisplay } from "@/lib/vehicles/resolve-vehicle-hero-display";
 
 import { DashboardShowcaseSharePrompt } from "@/components/onboarding/dashboard-showcase-share-prompt";
@@ -441,6 +443,14 @@ export function TagDashboardShell({
       });
       if (uploaded && !cancelled) {
         handleSilhouetteUploaded(uploaded);
+      }
+
+      // Soundcheck picked during onboarding (e.g. OAuth/e-mail confirm detour).
+      if (!cancelled) {
+        await flushPendingOnboardingEngineSound({
+          vehicleId: vehicle.id,
+          tagUuid: tagUuid?.trim() || undefined,
+        });
       }
     })();
 
@@ -1025,6 +1035,12 @@ export function TagDashboardShell({
             entdeckenHref={displayWeeklyRankEntdeckenHref}
           />
         </div>
+      ) : null}
+      {isOwner && !demoShowcase ? (
+        <LiveScanDashboardCard
+          vehicleId={vehicle.id}
+          upgradeHref={`${dashboardBase}/abo`}
+        />
       ) : null}
       <TagDashboardView
         vehicle={displayVehicle}

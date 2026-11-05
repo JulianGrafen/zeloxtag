@@ -1,3 +1,4 @@
+import { FREE_AI_INVOICE_SCAN_LIMIT } from "@/lib/billing/free-scan-constants";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUserHasActiveMembership = vi.fn();
@@ -83,7 +84,7 @@ describe("tryConsumeFreeOcrScanForOwner", () => {
   });
 
   it("returns exhausted when invoice quota is already used", async () => {
-    mockCreateAdminClient.mockReturnValue(entitlementAdminClient(2));
+    mockCreateAdminClient.mockReturnValue(entitlementAdminClient(FREE_AI_INVOICE_SCAN_LIMIT));
     const { tryConsumeFreeOcrScanForOwner } = await import("./free-scan-quota");
 
     const result = await tryConsumeFreeOcrScanForOwner(
@@ -188,12 +189,12 @@ describe("beginFreeScanSession", () => {
 
   it("returns exhausted when begin RPC yields null and quota is used", async () => {
     mockCreateAdminClient.mockReturnValue({
-      ...entitlementAdminClient(2),
+      ...entitlementAdminClient(FREE_AI_INVOICE_SCAN_LIMIT),
       rpc: async (name: string) => {
         if (name === "begin_free_scan_session") {
           return { data: null, error: null };
         }
-        return entitlementAdminClient(2).rpc(name);
+        return entitlementAdminClient(FREE_AI_INVOICE_SCAN_LIMIT).rpc(name);
       },
     });
 

@@ -9,6 +9,7 @@ import { PrivateTwinGate } from "@/components/tags/private-twin-gate";
 import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
 import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
 import { TagNotFound } from "@/components/tags/tag-not-found";
+import { TagScanBeacon } from "@/components/tags/tag-scan-beacon";
 import { TagScanRitualGate } from "@/components/tags/tag-scan-ritual-gate";
 import { isTagScanRitualSuppressedBySearch } from "@/lib/tags/tag-scan-ritual";
 import { PublicProfilePrivate } from "@/components/public-showcase/PublicProfilePrivate";
@@ -190,6 +191,8 @@ type PublicShowcaseRenderOptions = {
   discoverBackHref?: string | null;
   tagUuid?: string;
   playScanRitual?: boolean;
+  /** Physical QR scan of an active tag (not a shared slug link) — fires Live-Scan. */
+  recordTagScan?: boolean;
 };
 
 async function renderPublicShowcase(
@@ -281,6 +284,9 @@ async function renderPublicShowcase(
 
   return (
     <TagScanRitualGate tagUuid={ritualTagUuid} enabled={playScanRitual}>
+      {options?.recordTagScan && options.tagUuid ? (
+        <TagScanBeacon tagUuid={options.tagUuid} />
+      ) : null}
       <PublicShowcaseView
         data={payload}
         showDiscoverBack={options?.showDiscoverBack ?? false}
@@ -460,6 +466,7 @@ export default async function TagScanPage({
           return renderPublicShowcase(vehicle, {
             tagUuid: tag.uuid,
             playScanRitual,
+            recordTagScan: true,
           });
         }
         redirect("/profil-nicht-verfuegbar");
@@ -467,6 +474,7 @@ export default async function TagScanPage({
       return renderPublicShowcase(vehicle, {
         tagUuid: tag.uuid,
         playScanRitual,
+        recordTagScan: true,
       });
     }
 
@@ -552,6 +560,7 @@ export default async function TagScanPage({
       return (
         <AppShell showNavbar={false}>
           <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
+            <TagScanBeacon tagUuid={tag.uuid} />
             <PrivateTwinGate
               tagUuid={tag.uuid}
               vehicleLabel={vehicleTitle(vehicle.make, vehicle.model, vehicle.year)}
