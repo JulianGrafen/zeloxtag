@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { MANUAL_ENTRY_MARKER } from "@/lib/documents/manual-entries";
-
 import { mapDemoPublicModificationImages } from "./map-demo-public-modification-images";
 
 describe("mapDemoPublicModificationImages", () => {
@@ -10,10 +8,8 @@ describe("mapDemoPublicModificationImages", () => {
       {
         id: "doc_1",
         file_url: "/demo/autohaus-kemper-black-betty-front.jpg",
-        invoice_number: MANUAL_ENTRY_MARKER,
-        category: "tuning",
       },
-    ] as const;
+    ];
 
     const mapped = mapDemoPublicModificationImages(
       [
