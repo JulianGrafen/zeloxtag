@@ -29,7 +29,7 @@ export const DEMO_AUTOHAUS_KEMPER_LOGO_SRC =
 
 const KEMPER_SPEC_NOTES =
   "Unique Project „Black Betty“ von Autohaus Kemper: VW Golf V R32 mit Carbon-Breitbau, " +
-  "exposed-carbon Front und Showcar-Setup — Käfig, BBS und Bremsanlage im Motorraum sichtbar.";
+  "exposed-carbon Front und Showcar-Setup — Käfig, BBS und Bremsanlage.";
 
 export const DEMO_AUTOHAUS_KEMPER_BUILD_DNA: ShowcaseBuildDna = {
   version: BUILD_DNA_SCHEMA_VERSION,
