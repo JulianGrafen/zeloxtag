@@ -101,7 +101,7 @@ export function VehicleRankCard({
           ) : null}
           <p
             className="mt-2 flex items-center gap-1.5 font-mono text-[0.78rem] font-medium tabular-nums tracking-tight text-white/90"
-            aria-label={`${build.weeklyLikes} Likes`}
+            aria-label={`${build.weeklyLikes} Votes`}
           >
             <Heart
               className="h-3.5 w-3.5 shrink-0 text-rose-400"

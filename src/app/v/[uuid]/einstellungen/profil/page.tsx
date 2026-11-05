@@ -36,7 +36,7 @@ export default async function VehiclePublicProfileSettingsPage({
         tagUuid={tagUuid}
         vehicleSurfaceScope={scope}
         title="Öffentliches Profil"
-        description="Showcase-Seite mit Share-Link — sichtbar für Besucher, wenn das Profil öffentlich ist."
+        description="Wer deinen Showcase sieht"
         theme="discover"
       >
         <VehiclePublicProfileSettings

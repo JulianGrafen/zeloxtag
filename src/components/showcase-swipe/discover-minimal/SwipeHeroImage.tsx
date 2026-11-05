@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 
 import { shareCardImageCrossOrigin } from "@/lib/share/share-card-image-cross-origin";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,8 @@ export function SwipeHeroImage({
     make,
     model,
   );
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const loaded = loadedSrc === displaySrc;
 
   if (!hasImage) {
     return null;
@@ -43,10 +45,16 @@ export function SwipeHeroImage({
       src={displaySrc}
       alt={alt}
       draggable={false}
-      decoding={priority ? "sync" : "async"}
+      decoding="async"
       loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : "auto"}
+      onLoad={() => setLoadedSrc(displaySrc)}
       crossOrigin={shareCardImageCrossOrigin(initialSrc ?? "", displaySrc)}
-      className={cn("absolute inset-0 h-full w-full", className)}
+      className={cn(
+        "absolute inset-0 h-full w-full transition-opacity duration-200 ease-out",
+        loaded ? "opacity-100" : "opacity-0",
+        className,
+      )}
       style={style}
       onError={onError}
     />

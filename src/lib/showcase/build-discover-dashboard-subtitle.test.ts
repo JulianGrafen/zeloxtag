@@ -9,7 +9,7 @@ describe("formatBuildDiscoverDashboardSubtitle", () => {
         totalLikes: 3,
         unreadLikes: 0,
       }),
-    ).toBe("3 Likes gesamt");
+    ).toBe("3 Votes gesamt");
   });
 
   it("combines unread with total", () => {
@@ -18,7 +18,7 @@ describe("formatBuildDiscoverDashboardSubtitle", () => {
         totalLikes: 12,
         unreadLikes: 2,
       }),
-    ).toBe("2 neu · 12 Likes gesamt");
+    ).toBe("2 neu · 12 Votes gesamt");
   });
 
   it("shows weekly likes when all likes are this week", () => {
@@ -28,7 +28,7 @@ describe("formatBuildDiscoverDashboardSubtitle", () => {
         unreadLikes: 0,
         weeklyLikes: 3,
       }),
-    ).toBe("3 Likes diese Woche");
+    ).toBe("3 Votes diese Woche");
   });
 
   it("combines weekly with older total likes", () => {
@@ -38,7 +38,7 @@ describe("formatBuildDiscoverDashboardSubtitle", () => {
         unreadLikes: 0,
         weeklyLikes: 2,
       }),
-    ).toBe("2 Likes diese Woche · 12 Likes gesamt");
+    ).toBe("2 Votes diese Woche · 12 Votes gesamt");
   });
 
   it("falls back when no likes yet", () => {

@@ -30,7 +30,7 @@ export default async function VehicleExposePdfPage({
       <VehicleSettingsSubpageShell
         tagUuid={tagUuid}
         vehicleSurfaceScope={scope}
-        title="PDF-Exposé"
+        title="Exposé als PDF"
         description={`Druckfertiges Verkaufs-Exposé für ${vehicleLabel} — inkl. Historie, Umbauten und QR-Link zum ZeloxTag-Profil.`}
       >
         <ExposePdfSettings

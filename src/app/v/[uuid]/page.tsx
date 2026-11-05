@@ -10,6 +10,7 @@ import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
 import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
 import { TagNotFound } from "@/components/tags/tag-not-found";
 import { TagScanBeacon } from "@/components/tags/tag-scan-beacon";
+import { loadShowcaseVoteTotal } from "@/lib/showcase/showcase-votes";
 import { TagScanRitualGate } from "@/components/tags/tag-scan-ritual-gate";
 import { isTagScanRitualSuppressedBySearch } from "@/lib/tags/tag-scan-ritual";
 import { PublicProfilePrivate } from "@/components/public-showcase/PublicProfilePrivate";
@@ -281,6 +282,11 @@ async function renderPublicShowcase(
   const ritualTagUuid =
     options?.tagUuid?.trim() || payload.profile.publicSlug?.trim() || vehicle.id;
   const playScanRitual = options?.playScanRitual ?? true;
+
+  payload = {
+    ...payload,
+    voteTotal: await loadShowcaseVoteTotal(vehicleForPayload.id),
+  };
 
   return (
     <TagScanRitualGate tagUuid={ritualTagUuid} enabled={playScanRitual}>

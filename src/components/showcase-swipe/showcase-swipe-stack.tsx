@@ -24,6 +24,8 @@ import {
 import { SwipeCardMinimal } from "@/components/showcase-swipe/discover-minimal/SwipeCardMinimal";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 
+import { preloadSwipeImages } from "@/components/showcase-swipe/discover-minimal/preload-swipe-images";
+
 import "./stack.css";
 
 const SWIPE_OFFSET_PX = 56;
@@ -307,6 +309,11 @@ export const ShowcaseSwipeStack = forwardRef<
   useEffect(() => {
     setStack(visibleCards.map((card) => ({ id: card.publicSlug, card })));
   }, [visibleCards]);
+
+  // Decode the next few heroes ahead of time so swipes never reveal a blank card.
+  useEffect(() => {
+    preloadSwipeImages(cards.slice(0, MAX_VISIBLE + 3).map((card) => card.heroImageSrc));
+  }, [cards]);
 
   useImperativeHandle(
     ref,

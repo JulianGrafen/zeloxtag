@@ -1094,6 +1094,14 @@ export type Database = {
         Args: { p_at?: string };
         Returns: string;
       };
+      showcase_vote_total: {
+        Args: { p_vehicle_id: string };
+        Returns: number;
+      };
+      cast_showcase_vote: {
+        Args: { p_vehicle_id: string; p_voter_hash: string; p_user_id?: string | null };
+        Returns: Json;
+      };
       register_anonymous_swipe: {
         Args: {
           p_vehicle_id: string;

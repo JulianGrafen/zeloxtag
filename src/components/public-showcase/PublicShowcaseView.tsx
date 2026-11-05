@@ -6,6 +6,7 @@ import { ShowcaseBuiltByPartner } from "./ShowcaseBuiltByPartner";
 import { ShowcaseB2bPartnerFooterLink } from "./showcase-b2b-partner-footer-link";
 import { PublicShowcaseMarker } from "./public-showcase-marker";
 import { ShowroomHero } from "./ShowroomHero";
+import { ShowroomVoteButton } from "./ShowroomVoteButton";
 import { ShowroomBuildDna } from "./ShowroomBuildDna";
 import { ShowroomBuildPersonalityChips } from "./ShowroomBuildPersonalityChips";
 import { ShowroomStats } from "./ShowroomStats";
@@ -49,6 +50,14 @@ export function PublicShowcaseView({
       <div
         className={`${showroom.content} mx-auto flex w-full max-w-lg flex-col gap-4 pb-[max(2rem,env(safe-area-inset-bottom))]`}
       >
+        {data.voteTotal != null && data.profile.vehicleId ? (
+          <ShowroomVoteButton
+            vehicleId={data.profile.vehicleId}
+            initialTotal={data.voteTotal}
+            readOnly={Boolean(data.viewerIsOwner)}
+            className="-mt-1"
+          />
+        ) : null}
         {data.b2bPartner ? (
           <ShowcaseBuiltByPartner
             partner={data.b2bPartner}

@@ -16,16 +16,16 @@ export function formatBuildDiscoverDashboardSubtitle(options: {
 
   const totalLabel =
     total === 1
-      ? "1 Like gesamt"
+      ? "1 Vote gesamt"
       : total > 0
-        ? `${total.toLocaleString("de-DE")} Likes gesamt`
+        ? `${total.toLocaleString("de-DE")} Votes gesamt`
         : null;
 
   const weeklyLabel =
     weekly === 1
-      ? "1 Like diese Woche"
+      ? "1 Vote diese Woche"
       : weekly > 0
-        ? `${weekly.toLocaleString("de-DE")} Likes diese Woche`
+        ? `${weekly.toLocaleString("de-DE")} Votes diese Woche`
         : null;
 
   if (totalLabel) {
@@ -44,7 +44,7 @@ export function formatBuildDiscoverDashboardSubtitle(options: {
   }
 
   if (unread > 0) {
-    return unread === 1 ? "1 neuer Like" : `${unread.toLocaleString("de-DE")} neue Likes`;
+    return unread === 1 ? "1 neuer Vote" : `${unread.toLocaleString("de-DE")} neue Votes`;
   }
 
   return "Swipe · öffentliche Builds";

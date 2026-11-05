@@ -120,6 +120,10 @@ export type PublicShowcasePayload = {
   buildDna: ShowcaseBuildDna | null;
   buildStory: PublicBuildStorySlice | null;
   b2bPartner?: PublicShowcaseB2bPartner | null;
+  /** Public vote total (showcase votes + Build-Swipe likes). Omitted in demos. */
+  voteTotal?: number;
+  /** Viewer owns this vehicle — show the count, no vote button. */
+  viewerIsOwner?: boolean;
 };
 
 function mapPublicServiceBookEntries(

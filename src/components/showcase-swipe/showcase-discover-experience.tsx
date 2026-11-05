@@ -108,7 +108,7 @@ export function ShowcaseDiscoverExperience({
         layout
         aria-label="Builds swipen"
         className={cn("pb-2", rankingsRevealed && "pb-0")}
-        transition={{ layout: { duration: 0.55, ease: RANKINGS_REVEAL_EASE } }}
+        transition={{ layout: { duration: 0.28, ease: RANKINGS_REVEAL_EASE } }}
       >
         <ShowcaseSwipeDeck
           tagUuid={tagUuid}
@@ -127,7 +127,7 @@ export function ShowcaseDiscoverExperience({
           "flex scroll-mt-4 flex-col",
           rankingsRevealed && "discover-rankings-reveal",
         )}
-        transition={{ layout: { duration: 0.55, ease: RANKINGS_REVEAL_EASE } }}
+        transition={{ layout: { duration: 0.28, ease: RANKINGS_REVEAL_EASE } }}
       >
         <LeaderboardCompact
           builds={weeklyBuilds}

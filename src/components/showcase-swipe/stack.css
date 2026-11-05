@@ -31,3 +31,22 @@
   display: flex;
   flex-direction: column;
 }
+
+/* Compositor-only animation: transforms/opacity on their own layer, no layout thrash. */
+.showcase-swipe-stack .card-rotate,
+.showcase-swipe-stack .card-rotate-disabled {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.showcase-swipe-stack .stack-card img {
+  /* Avoid a decode flash while the card is moving. */
+  content-visibility: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .showcase-swipe-stack {
+    perspective: none;
+  }
+}

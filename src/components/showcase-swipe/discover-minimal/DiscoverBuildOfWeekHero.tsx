@@ -43,7 +43,7 @@ export function DiscoverBuildOfWeekHero({
           ) : null}
         </p>
         <p className="text-[0.78rem] text-zinc-400">
-          {build.weeklyLikes} Like{build.weeklyLikes === 1 ? "" : "s"} · 7 Tage
+          {build.weeklyLikes} Vote{build.weeklyLikes === 1 ? "" : "s"} · 7 Tage
         </p>
       </div>
       <div className="relative mt-3 aspect-[16/10] w-full bg-zinc-900">

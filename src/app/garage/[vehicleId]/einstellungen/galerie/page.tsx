@@ -31,8 +31,8 @@ export default async function VehicleGallerySettingsPage({
       <VehicleSettingsSubpageShell
         tagUuid={tagUuid}
         vehicleSurfaceScope={settingsScope}
-        title="Showcase-Galerie"
-        description={`Bis zu ${MAX_SHOWCASE_GALLERY_PHOTOS} Fotos für das öffentliche Profil — Besucher sehen sie in der Visitenkarte.`}
+        title="Galerie"
+        description={`Bis zu ${MAX_SHOWCASE_GALLERY_PHOTOS} Fotos`}
       >
         <VehicleShowcaseGallerySettings
           tagUuid={tagUuid}

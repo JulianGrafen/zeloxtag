@@ -35,7 +35,7 @@ export default async function VehicleFahrzeugbildPage({
         backHref={`/v/${uuid}/daten`}
         backLabel="Technische Daten"
         title="Fahrzeugbild"
-        description="Dashboard und öffentlicher Showcase."
+        description="Titelbild für Dashboard und Showcase"
       >
         <VehicleFahrzeugbildSettings
           tagUuid={uuid}
