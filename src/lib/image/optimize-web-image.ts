@@ -51,16 +51,16 @@ export async function optimizeWebImageBytes(
   }
 
   try {
-    const png = await resizeImageToMaxEdge(
+    // WebP first: ~10× smaller than PNG for photos, keeps transparency.
+    const webp = await resizeImageToMaxEdge(
       input,
       maxEdgePx,
-      "png",
-      90,
+      "webp",
+      80,
       resolvedContentType,
-    );
-
-    if (png.length <= targetMaxBytes || png.length < input.length) {
-      return { body: png, contentType: "image/png" };
+    ).catch(() => null);
+    if (webp && webp.length > 0 && webp.length < input.length) {
+      return { body: webp, contentType: "image/webp" };
     }
 
     const jpeg = await resizeImageToMaxEdge(

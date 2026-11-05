@@ -43,8 +43,10 @@ function silhouetteCacheControl(
 ): string {
   const version = request.nextUrl.searchParams.get("v");
   if (version?.trim()) {
+    // s-maxage lets the Vercel CDN serve versioned public photos without
+    // re-running the resize for every visitor.
     return isPublicShowcase
-      ? "public, max-age=31536000, immutable"
+      ? "public, max-age=31536000, s-maxage=31536000, immutable"
       : "private, max-age=31536000, immutable";
   }
   return isPublicShowcase
@@ -136,21 +138,14 @@ export async function GET(
     );
   }
 
-  const bytes = await loadVehicleSilhouetteBytes(parsed.data);
-  if (!bytes) {
-    return NextResponse.json(
-      { ok: false, error: "Vehicle photo not found." },
-      { status: 404 },
-    );
-  }
-
   const maxEdgePx = parseMaxEdgePx(request);
   const version = request.nextUrl.searchParams.get("v")?.trim() ?? "";
   const cacheControl = silhouetteCacheControl(request, access.isPublicShowcase);
   const corp = resourcePolicyForShowcase(access.isPublicShowcase);
 
+  // Check the optimized cache before downloading the original from storage.
   const cacheKey = optimizedImageCacheKey({
-    scope: "silhouette",
+    scope: "silhouette-webp",
     id: parsed.data,
     maxEdgePx,
     version,
@@ -165,6 +160,14 @@ export async function GET(
         "Cross-Origin-Resource-Policy": corp,
       },
     });
+  }
+
+  const bytes = await loadVehicleSilhouetteBytes(parsed.data);
+  if (!bytes) {
+    return NextResponse.json(
+      { ok: false, error: "Vehicle photo not found." },
+      { status: 404 },
+    );
   }
 
   try {
