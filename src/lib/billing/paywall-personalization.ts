@@ -65,11 +65,7 @@ export function paywallVehicleHeroFromContext(
   context?: PaywallTriggerContext | null,
 ): PaywallVehicleHeroContext | null {
   if (!context) return null;
-  const hasImage =
-    context.vehicleImage?.trim() ||
-    context.vehicleImageFallback?.trim() ||
-    context.vehicleImagePreviewFallback?.trim();
-  if (!hasImage && context.vehicleImageFrameless !== true) {
+  if (!hasPaywallHeroImage(context)) {
     return null;
   }
   return {
@@ -79,6 +75,22 @@ export function paywallVehicleHeroFromContext(
     vehicleImageFrameless: context.vehicleImageFrameless ?? false,
     vehicleImageAlt: context.vehicleImageAlt,
   };
+}
+
+/** True when a dashboard/catalog/preview image should render in the paywall hero. */
+export function hasPaywallHeroImage(
+  hero:
+    | PaywallVehicleHeroContext
+    | PaywallTriggerContext
+    | null
+    | undefined,
+): boolean {
+  if (!hero) return false;
+  return Boolean(
+    hero.vehicleImage?.trim() ||
+      hero.vehicleImageFallback?.trim() ||
+      hero.vehicleImagePreviewFallback?.trim(),
+  );
 }
 
 export function paywallVehicleShortName(

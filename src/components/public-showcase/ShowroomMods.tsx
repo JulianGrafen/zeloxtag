@@ -10,23 +10,40 @@ import {
   modMatchesPartnerBrand,
   partnerBrandHref,
 } from "@/lib/showcase/partner-mod-branding";
+import { useRegionalFormatters } from "@/lib/i18n/hooks/use-regional-formatters";
 
 import { formatDocumentDate } from "@/lib/documents/format";
 import { cn } from "@/lib/utils";
 
 import { ModBadge } from "./ModBadge";
+import { ShowcasePartnerLogoMark } from "./ShowcasePartnerLogoMark";
 import { ShowcasePartnerVendorBadge } from "./ShowcasePartnerVendorBadge";
 import { ShowroomDisclosure } from "./ShowroomDisclosure";
+import { ShowroomGroup } from "./ShowroomGroup";
 import { showroomModLabelTypography } from "./showroom-mod-typography";
 import { showroom } from "./showroom-styles";
+
+/** True when at least one umbau has a showcase photo — then we show the carousel, not the text list. */
+export function modificationsHaveShowcaseImages(
+  modifications: readonly Pick<PublicModification, "imageSrc">[],
+): boolean {
+  return modifications.some((mod) => Boolean(mod.imageSrc?.trim()));
+}
 
 type ShowroomModsProps = {
   modifications: PublicModification[];
   partnerBranding?: PublicShowcaseB2bPartner | null;
   embedded?: boolean;
-  /** Demo / partner pitch — Umbauten list open on first paint. */
-  defaultOpen?: boolean;
 };
+
+/** Compact month/year badge on carousel cards (e.g. `03/26`). */
+export function formatShowroomModBadgeDate(iso: string | null): string | null {
+  if (!iso?.trim()) return null;
+  const normalized = iso.trim().slice(0, 10);
+  const match = /^(\d{4})-(\d{2})/.exec(normalized);
+  if (!match) return null;
+  return `${match[2]}/${match[1].slice(2)}`;
+}
 
 function formatDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -34,13 +51,31 @@ function formatDate(iso: string | null): string | null {
   return label === "Ohne Datum" ? null : label;
 }
 
-function umbautenSubtitle(
-  modifications: PublicModification[],
-  open: boolean,
-): string | undefined {
-  if (open || modifications.length === 0) return undefined;
-  const count = modifications.length;
-  return count === 1 ? "1 Umbau" : `${count} Umbauten`;
+function umbautenPartnerLogo(
+  partnerBranding: PublicShowcaseB2bPartner | null | undefined,
+  size: "sm" | "md" = "md",
+) {
+  if (!partnerBranding?.logoSrc?.trim()) return null;
+  return <ShowcasePartnerLogoMark partner={partnerBranding} size={size} />;
+}
+
+function UmbautenSectionHeader({
+  partnerBranding,
+}: {
+  partnerBranding?: PublicShowcaseB2bPartner | null;
+}) {
+  const logo = umbautenPartnerLogo(partnerBranding, "md");
+  return (
+    <div
+      className={cn(
+        "mb-3 flex min-w-0 items-center gap-3 px-1",
+        logo ? "justify-between" : null,
+      )}
+    >
+      <h2 className={showroom.sectionTitle}>Umbauten</h2>
+      {logo}
+    </div>
+  );
 }
 
 function UmbautenList({
@@ -115,43 +150,158 @@ function UmbautenList({
   );
 }
 
+function ShowroomModCarouselCard({
+  mod,
+  partnerBranding,
+  priceLabel,
+}: {
+  mod: PublicModification;
+  partnerBranding?: PublicShowcaseB2bPartner | null;
+  priceLabel: string | null;
+}) {
+  const badgeDate = formatShowroomModBadgeDate(mod.date);
+  const labelType = showroomModLabelTypography(mod.label);
+  const isPartnerMod = modMatchesPartnerBrand(mod, partnerBranding);
+  const partnerHref = isPartnerMod ? partnerBrandHref(partnerBranding) : null;
+
+  const cardInner = (
+    <>
+      {mod.imageSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={mod.imageSrc}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        />
+      ) : (
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-zinc-700 to-zinc-950"
+          aria-hidden
+        />
+      )}
+      <div
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/55 via-45% to-black/10"
+        aria-hidden
+      />
+      {badgeDate ? (
+        <span className="absolute left-2.5 top-2.5 z-[1] rounded-md bg-black/55 px-2 py-0.5 text-[0.68rem] font-semibold tabular-nums tracking-wide text-white backdrop-blur-sm">
+          {badgeDate}
+        </span>
+      ) : null}
+      <div className="absolute inset-x-0 bottom-0 z-[1] p-3 pt-8">
+        <p
+          className={cn(
+            labelType.className,
+            "line-clamp-2 text-[0.95rem] font-semibold leading-snug text-white drop-shadow-sm",
+          )}
+          style={labelType.style}
+        >
+          {mod.label}
+        </p>
+        {priceLabel ? (
+          <p className="mt-1 text-[0.82rem] font-medium tabular-nums text-white/85">
+            {priceLabel}
+          </p>
+        ) : null}
+        {isPartnerMod && partnerBranding ? (
+          <div className="mt-2 flex min-w-0 items-center gap-1.5">
+            <span className="shrink-0 text-[0.68rem] font-medium lowercase tracking-wide text-white/55">
+              by
+            </span>
+            {umbautenPartnerLogo(partnerBranding, "sm")}
+          </div>
+        ) : null}
+      </div>
+    </>
+  );
+
+  const className =
+    "relative aspect-[3/4] w-[9.25rem] shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 sm:w-[9.75rem]";
+
+  if (partnerHref) {
+    return (
+      <a
+        href={partnerHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(className, "block")}
+      >
+        {cardInner}
+      </a>
+    );
+  }
+
+  return <article className={className}>{cardInner}</article>;
+}
+
 export function ShowroomMods({
   modifications,
   partnerBranding = null,
   embedded = false,
-  defaultOpen = false,
 }: ShowroomModsProps) {
-  const [open, setOpen] = useState(defaultOpen);
+  const { formatMoney } = useRegionalFormatters();
+  const hasGalleryImages = modificationsHaveShowcaseImages(modifications);
+  const carouselMods = hasGalleryImages
+    ? modifications.filter((mod) => Boolean(mod.imageSrc?.trim()))
+    : modifications;
+  const [listOpen, setListOpen] = useState(false);
 
   if (modifications.length === 0) {
     return null;
   }
 
-  const list = (
-    <UmbautenList
-      modifications={modifications}
-      partnerBranding={partnerBranding}
-    />
+  const count = modifications.length;
+  const countSubtitle =
+    count === 1 ? "1 Eintrag" : `${count} Einträge`;
+
+  const carousel = (
+    <div
+      className="-mx-4 flex gap-3 overflow-x-auto overscroll-x-contain px-4 pb-1 snap-x snap-mandatory no-scrollbar"
+      aria-label="Umbauten"
+    >
+      {carouselMods.map((mod) => (
+        <ShowroomModCarouselCard
+          key={mod.id}
+          mod={mod}
+          partnerBranding={partnerBranding}
+          priceLabel={formatMoney(mod.amount)}
+        />
+      ))}
+    </div>
   );
 
-  const subtitle = umbautenSubtitle(modifications, open);
+  const listDisclosure = (
+    <ShowroomGroup>
+      <ShowroomDisclosure
+        title="Umbauten"
+        subtitle={countSubtitle}
+        titleTrailing={umbautenPartnerLogo(partnerBranding, "sm")}
+        open={listOpen}
+        onToggle={() => setListOpen((open) => !open)}
+        panelId="showroom-mods-disclosure"
+      >
+        <UmbautenList
+          modifications={modifications}
+          partnerBranding={partnerBranding}
+        />
+      </ShowroomDisclosure>
+    </ShowroomGroup>
+  );
 
-  const disclosure = (
-    <ShowroomDisclosure
-      title="Umbauten"
-      subtitle={subtitle}
-      open={open}
-      onToggle={() => setOpen((value) => !value)}
-      panelId="showroom-mods-list"
-      collapsible
-    >
-      {list}
-    </ShowroomDisclosure>
+  const section = hasGalleryImages ? (
+    <section className="min-w-0">
+      <UmbautenSectionHeader partnerBranding={partnerBranding} />
+      {carousel}
+    </section>
+  ) : (
+    <section className="min-w-0">{listDisclosure}</section>
   );
 
   if (embedded) {
-    return disclosure;
+    return section;
   }
 
-  return <div className={showroom.panelFlat}>{disclosure}</div>;
+  return <div className={showroom.panelFlat}>{section}</div>;
 }

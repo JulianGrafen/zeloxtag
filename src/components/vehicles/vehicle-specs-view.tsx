@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type ChangeEvent } from "react";
+import { useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ImageIcon, Save } from "lucide-react";
 
@@ -45,12 +45,14 @@ import {
   type VehicleTechSpecs,
 } from "@/lib/vehicles/tech-specs";
 import { showSavedToast } from "@/lib/ui/saved-toast";
+import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import type { Vehicle } from "@/types/database";
 
 type VehicleSpecsViewProps = {
   tagUuid: string;
   vehicle: Vehicle;
   canEdit: boolean;
+  vehicleSurfaceScope?: VehicleSurfaceScope;
 };
 
 type EditableSpecKey = Exclude<
@@ -65,14 +67,13 @@ export function VehicleSpecsView({
   tagUuid,
   vehicle,
   canEdit,
+  vehicleSurfaceScope,
 }: VehicleSpecsViewProps) {
   const router = useRouter();
-  const surfaceScope = useMemo(
-    () => vehicleSurfaceScopeFromContext(tagUuid, vehicle.id),
-    [tagUuid, vehicle.id],
-  );
-  const dashboardHref = vehicleSurfaceHref(surfaceScope);
-  const fahrzeugbildHref = vehicleSurfaceHref(surfaceScope, "daten/fahrzeugbild");
+  const scope =
+    vehicleSurfaceScope ??
+    vehicleSurfaceScopeFromContext(tagUuid, vehicle.id);
+  const fahrzeugbildHref = vehicleSurfaceHref(scope, "daten/fahrzeugbild");
   const initialSpecs = parseVehicleTechSpecs(vehicle.tech_specs);
   const [make, setMake] = useState(vehicle.make);
   const [model, setModel] = useState(vehicle.model);
@@ -267,7 +268,8 @@ export function VehicleSpecsView({
     <IOSListPage
       title="Fahrzeugdaten"
       subtitle={title}
-      backHref={dashboardHref}
+      backHref={vehicleSurfaceHref(scope, "einstellungen")}
+      backLabel="Mein Fahrzeug"
       overlay={saveBar}
     >
       {error ? (
@@ -447,7 +449,7 @@ export function VehicleSpecsView({
             />
           </InsetGroupedCard>
 
-          <InsetGroupedCard header="Öffentlich">
+          <InsetGroupedCard header="Social">
             <SpecInputRow
               id="spec-instagram"
               label="Instagram"
@@ -458,7 +460,7 @@ export function VehicleSpecsView({
             />
           </InsetGroupedCard>
 
-          <InsetGroupedCard header="Spezifikationen">
+          <InsetGroupedCard header="Notizen">
             <SpecTextArea
               rows={3}
               aria-label="Spezifikationen"
@@ -469,7 +471,7 @@ export function VehicleSpecsView({
 
           <InsetGroupedCard
             header="Wartung"
-            footer="Für die Fälligkeit auf der Ölwechsel-Seite — wird beim Registrieren übernommen und kann hier angepasst werden."
+            footer="Für die Ölwechsel-Erinnerung."
           >
             <SpecSelectRow
               id="oil-interval-km"

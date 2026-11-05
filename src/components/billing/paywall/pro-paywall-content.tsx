@@ -6,9 +6,10 @@ import {
   PaywallExhaustedKicker,
   PaywallOfferSections,
 } from "@/components/billing/paywall/paywall-layout";
-import type {
-  PaywallVehicleHeroContext,
-  PaywallVisualKind,
+import {
+  hasPaywallHeroImage,
+  type PaywallVehicleHeroContext,
+  type PaywallVisualKind,
 } from "@/lib/billing/paywall-personalization";
 import { PricingCards } from "@/components/billing/paywall/pricing-cards";
 import {
@@ -68,8 +69,12 @@ export function ProPaywallContent({
 }: ProPaywallContentProps) {
   const compact = true;
   const isModal = layout === "modal";
+  const showHeroPhoto = hasPaywallHeroImage(vehicleHero);
   const showExhaustedKicker = variant === "free_scan_exhausted";
   const kicker = showExhaustedKicker ? <PaywallExhaustedKicker /> : null;
+  const modalHeroFigureClass = showHeroPhoto
+    ? "min-h-[15rem] sm:min-h-[17rem] pb-6"
+    : "min-h-0 pb-0";
 
   const offerSections = (
     <PaywallOfferSections
@@ -94,35 +99,57 @@ export function ProPaywallContent({
       {showConversionExtras ? (
         isModal ? (
           <div
-            className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]"
+            className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[color:var(--paywall-sheet-bg)]"
             aria-label="Pro-Angebot scrollen"
           >
-            <div className="relative shrink-0">
-              <PaywallAnimatedGoalVisual
-                kind={visualKind}
-                ariaLabel={visualAriaLabel ?? DEFAULT_VISUAL_ARIA}
-                vehicleHero={vehicleHero}
-                className="pt-[max(2.75rem,calc(env(safe-area-inset-top)+2rem))]"
-                figureClassName="min-h-[15rem] sm:min-h-[17rem] pb-6"
-              />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-4 pb-2 pt-8">
-                <PaywallCopyBlock
-                  headline={headline}
-                  headlineId={headlineId}
-                  subline={subline}
-                  vehicleEyebrow={vehicleEyebrow}
-                  align="center"
-                  kicker={kicker}
-                  statusMessage={statusMessage}
-                  titleSize="modal"
-                  tone="hero-overlay"
-                />
+            <div
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]"
+            >
+              {showHeroPhoto ? (
+                <div className="relative shrink-0">
+                  <PaywallAnimatedGoalVisual
+                    kind={visualKind}
+                    ariaLabel={visualAriaLabel ?? DEFAULT_VISUAL_ARIA}
+                    vehicleHero={vehicleHero}
+                    className="pt-[max(2.75rem,calc(env(safe-area-inset-top)+2rem))]"
+                    figureClassName={modalHeroFigureClass}
+                  />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-4 pb-2 pt-8">
+                    <PaywallCopyBlock
+                      headline={headline}
+                      headlineId={headlineId}
+                      subline={subline}
+                      vehicleEyebrow={vehicleEyebrow}
+                      align="center"
+                      kicker={kicker}
+                      statusMessage={statusMessage}
+                      titleSize="modal"
+                      tone="hero-overlay"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="shrink-0 px-4 pt-[max(2.75rem,calc(env(safe-area-inset-top)+2rem))]">
+                  <PaywallCopyBlock
+                    headline={headline}
+                    headlineId={headlineId}
+                    subline={subline}
+                    vehicleEyebrow={vehicleEyebrow}
+                    align="center"
+                    kicker={kicker}
+                    statusMessage={statusMessage}
+                    titleSize="modal"
+                    tone="default"
+                  />
+                </div>
+              )}
+
+              <div className="mx-auto w-full max-w-lg space-y-4 px-4 pt-3 pb-2">
+                {offerSections}
               </div>
             </div>
 
-            <div className="mx-auto w-full max-w-lg space-y-4 px-4 pt-3">
-              {offerSections}
-            </div>
+            <div className="relative z-20 shrink-0">{ctaSlot}</div>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
@@ -163,11 +190,11 @@ export function ProPaywallContent({
         </div>
       )}
 
-      <div
-        className={cn("relative z-20 shrink-0", isModal ? "mt-auto" : "mt-1")}
-      >
-        {ctaSlot}
-      </div>
+      {!isModal || !showConversionExtras ? (
+        <div className={cn("relative z-20 shrink-0", isModal ? "mt-auto" : "mt-1")}>
+          {ctaSlot}
+        </div>
+      ) : null}
     </div>
   );
 }

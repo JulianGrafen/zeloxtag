@@ -16,18 +16,18 @@ describe("buildEgoStatsSegments", () => {
       },
     );
     expect(segments.rank).toBe("Platz 4");
-    expect(segments.likes).toBe("11 Likes");
+    expect(segments.likes).toBe("11 Votes");
     expect(segments.winRate).toBe("🔥 58% Win-Rate");
     expect(egoStatsDisplayParts(segments)).toEqual([
       "Platz 4",
-      "11 Likes",
+      "11 Votes",
       "🔥 58% Win-Rate",
     ]);
   });
 
   it("uses singular like label", () => {
     const segments = buildEgoStatsSegments({ rank: 1, weeklyLikes: 1 }, null);
-    expect(segments.likes).toBe("1 Like");
+    expect(segments.likes).toBe("1 Vote");
   });
 
   it("returns empty parts when inputs are null", () => {

@@ -12,6 +12,12 @@ export const FIXED_BOTTOM_ACTION_Z = "z-[125]";
 /** Scan FAB + quick-action sheet — same layer as bottom bars. */
 export const SCAN_FAB_Z = "z-[125]";
 
+/**
+ * Edit sheets / modals opened from a page that also shows the save bar or FAB.
+ * Must sit above FIXED_BOTTOM_ACTION_Z, otherwise the bar covers the sheet.
+ */
+export const EDIT_SHEET_Z = "z-[130]";
+
 function subscribeClientNoop() {
   return () => undefined;
 }

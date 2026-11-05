@@ -24,6 +24,8 @@ import {
 import { SwipeCardMinimal } from "@/components/showcase-swipe/discover-minimal/SwipeCardMinimal";
 import type { ShowcaseSwipeCard } from "@/lib/showcase/swipe-types";
 
+import { preloadSwipeImages } from "@/components/showcase-swipe/discover-minimal/preload-swipe-images";
+
 import "./stack.css";
 
 const SWIPE_OFFSET_PX = 56;
@@ -183,14 +185,14 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
           }}
         >
           <motion.div
-            className="pointer-events-none absolute left-4 top-4 z-10 rounded-xl border-2 border-emerald-400/80 bg-emerald-500/15 px-3 py-1.5 text-[0.8rem] font-bold uppercase tracking-wide text-emerald-300"
+            className="pointer-events-none absolute left-4 top-4 z-10 rounded-lg border-2 border-white/90 bg-white/10 px-3 py-1.5 text-[0.75rem] font-bold uppercase tracking-[0.18em] text-white backdrop-blur-sm"
             style={{ opacity: likeOpacity, rotate: -12 }}
             aria-hidden
           >
-            Like
+            Vote
           </motion.div>
           <motion.div
-            className="pointer-events-none absolute right-4 top-4 z-10 rounded-xl border-2 border-rose-400/80 bg-rose-500/15 px-3 py-1.5 text-[0.8rem] font-bold uppercase tracking-wide text-rose-300"
+            className="pointer-events-none absolute right-4 top-4 z-10 rounded-lg border-2 border-white/40 bg-black/30 px-3 py-1.5 text-[0.75rem] font-bold uppercase tracking-[0.18em] text-white/70 backdrop-blur-sm"
             style={{ opacity: passOpacity, rotate: 12 }}
             aria-hidden
           >
@@ -211,7 +213,7 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
                 type="button"
                 disabled={disabled || isExiting}
                 aria-label="Pass"
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/45 text-rose-400 shadow-lg backdrop-blur-md transition active:scale-95 disabled:opacity-50"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/[0.06] text-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-md transition-transform duration-150 active:scale-90 disabled:opacity-50"
                 onPointerDown={stopDragPropagation}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -223,15 +225,15 @@ const SwipeableTopCard = forwardRef<SwipeableTopCardHandle, SwipeableTopCardProp
               <button
                 type="button"
                 disabled={disabled || isExiting}
-                aria-label="Like"
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-emerald-400/35 bg-black/45 text-emerald-400 shadow-lg backdrop-blur-md transition active:scale-95 disabled:opacity-50"
+                aria-label="Vote"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/50 bg-gradient-to-b from-zinc-100 to-zinc-300 text-black shadow-[0_10px_30px_rgba(255,255,255,0.12)] transition-transform duration-150 active:scale-90 disabled:opacity-50"
                 onPointerDown={stopDragPropagation}
                 onClick={(event) => {
                   event.stopPropagation();
                   void flyOff("like");
                 }}
               >
-                <Heart className="h-7 w-7" strokeWidth={2.25} aria-hidden />
+                <Heart className="h-6 w-6 fill-black" strokeWidth={2} aria-hidden />
               </button>
             </div>
           </div>
@@ -307,6 +309,11 @@ export const ShowcaseSwipeStack = forwardRef<
   useEffect(() => {
     setStack(visibleCards.map((card) => ({ id: card.publicSlug, card })));
   }, [visibleCards]);
+
+  // Decode the next few heroes ahead of time so swipes never reveal a blank card.
+  useEffect(() => {
+    preloadSwipeImages(cards.slice(0, MAX_VISIBLE + 3).map((card) => card.heroImageSrc));
+  }, [cards]);
 
   useImperativeHandle(
     ref,

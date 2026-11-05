@@ -5,7 +5,8 @@
 import type { ZeloxPrimaryGoal } from "@/lib/onboarding/primary-goal";
 
 export const DASHBOARD_TOUR_STORAGE_KEY = "zt_dashboard_tour_v1";
-export const DASHBOARD_TOUR_VERSION = 2;
+/** v3: Umbauten + „Im Showcase zeigen“ steps; bump re-shows the tour once. */
+export const DASHBOARD_TOUR_VERSION = 3;
 export const DASHBOARD_TOUR_QUERY = "tour";
 
 const APP_ORIGIN_FOR_PATH = "https://app.zeloxtag.de";
@@ -25,57 +26,57 @@ export type DashboardTourStep = {
 const OWNER_STEPS: DashboardTourStep[] = [
   {
     id: "welcome",
-    title: "Willkommen bei ZeloxTag",
-    body: "Kurz die wichtigsten Stellen — Scan, Akte, Historie, Werkstatt, Showcase und Kontosicherheit. Du kannst jederzeit überspringen.",
+    title: "Willkommen in deiner Garage",
+    body: "30 Sekunden: wo du Umbauten einträgst, wie sie ins Showcase kommen und wo deine Belege liegen.",
   },
   {
     id: "header",
     target: "[data-tour='dashboard-header']",
-    title: "Profil & Fahrzeug",
-    body: "Marke, Modell und dein verbundener ZeloxTag. Tippe auf dein Fahrzeugfoto oben rechts, um es zu ändern.",
+    title: "Dein Fahrzeug",
+    body: "Tippe aufs Foto, um es zu ändern.",
     placement: "bottom",
+  },
+  {
+    id: "modifications",
+    target: "[data-tour='tile-modifications']",
+    title: "Umbauten eintragen",
+    body: "Foto, Titel, fertig. Jeder Umbau landet in deiner Chronik.",
+    placement: "bottom",
+  },
+  {
+    id: "showcase",
+    target: "[data-tour='tile-vehicle-settings']",
+    title: "Im Showcase zeigen",
+    body: "Hier pflegst du Fahrzeugdaten und Showcase. Unter „Umbauten“ legst du pro Umbau per Schalter fest, ob er mit Bildern öffentlich ist. Preise und Rechnungen bleiben privat.",
+    placement: "top",
   },
   {
     id: "scan",
     target: "[data-tour='scan-fab']",
-    title: "Dokument scannen",
-    body: "Der Einstieg in die Akte: Foto oder PDF — ZeloxTag erkennt Typ und Felder. Vor dem Speichern kannst du alles prüfen.",
+    title: "Rechnung scannen",
+    body: "Foto oder PDF. Teile und Kosten werden automatisch erkannt.",
     placement: "top",
   },
   {
     id: "invoices",
     target: "[data-tour='tile-invoices']",
-    title: "Belege & Akte",
-    body: "Rechnungen, ABE, TÜV und Service — strukturiert, durchsuchbar, mit Original-PDF in der Detailansicht.",
+    title: "Belege",
+    body: "Rechnungen, ABE, TÜV und Service an einem Ort.",
     placement: "bottom",
   },
   {
     id: "timeline",
     target: "[data-tour='dashboard-chronik-tab']",
     title: "Chronik",
-    body: "Im Tab Chronik siehst du Meilensteine, Umbauten und Service — sortiert nach Kilometerstand. Perfekt für Übergabe und Verkauf.",
+    body: "Alle Umbauten und Services nach Kilometerstand.",
     placement: "bottom",
   },
   {
     id: "werkstatt",
     target: "[data-tour='tile-schrauber']",
-    title: "Werkstatt & Schrauber",
-    body: "Lade Werkstatt oder Schrauber ein. Sie tragen Belege ein und scannen vor Ort — ohne dein Passwort, nur mit den Rechten, die du freigibst.",
+    title: "Werkstatt einladen",
+    body: "Deine Werkstatt trägt Belege direkt ein, ohne dein Passwort.",
     placement: "bottom",
-  },
-  {
-    id: "showcase",
-    target: "[data-tour='tile-vehicle-settings']",
-    title: "Öffentliches Showcase",
-    body: "Steuere, was Interessenten beim QR-Scan sehen: Profil, Galerie, freigegebene Dokumente und Exposé für den Verkauf.",
-    placement: "top",
-  },
-  {
-    id: "account",
-    target: "[data-tour='tile-settings']",
-    title: "Konto & 2FA",
-    body: "Hier erreichst du deine Kontoeinstellungen. Richte Zwei-Faktor-Authentifizierung (2FA) per Authenticator-App ein — empfohlen für zusätzlichen Schutz.",
-    placement: "top",
   },
 ];
 
@@ -131,42 +132,42 @@ const OWNER_STEP_ORDER_BY_GOAL: Record<ZeloxPrimaryGoal, string[]> = {
   werterhalt: [
     "welcome",
     "header",
-    "timeline",
+    "modifications",
     "showcase",
+    "timeline",
     "scan",
     "invoices",
     "werkstatt",
-    "account",
   ],
   showcase: [
     "welcome",
     "header",
+    "modifications",
     "showcase",
     "scan",
     "invoices",
     "timeline",
     "werkstatt",
-    "account",
   ],
   documents: [
     "welcome",
     "header",
     "scan",
     "invoices",
+    "modifications",
+    "showcase",
     "timeline",
     "werkstatt",
-    "showcase",
-    "account",
   ],
 };
 
 const OWNER_WELCOME_BY_GOAL: Record<ZeloxPrimaryGoal, string> = {
   werterhalt:
-    "Du legst Wert auf Werterhalt — kurz die Stellen für Historie, Showcase und Scan.",
+    "Werterhalt im Blick: kurz Umbauten, Showcase und Historie.",
   showcase:
-    "Dein Auto als Visitenkarte — kurz Showcase, Scan und Akte.",
+    "Dein Auto als Visitenkarte: kurz Umbauten und Showcase.",
   documents:
-    "Alles an einem Ort — kurz Scan, Belege und Historie.",
+    "Alles an einem Ort: kurz Scan, Belege und Umbauten.",
 };
 
 function orderOwnerSteps(

@@ -34,7 +34,7 @@ export default async function VehicleExposeLinkPage({
         tagUuid={tagUuid}
         vehicleSurfaceScope={settingsScope}
         title="Online-Verkaufsexposé"
-        description="Erzeugt ein fälschungssicheres Dossier mit Investitionen, Services und Historie — ideal für Mobile.de und Kleinanzeigen. Adressen, IBAN und private Notizen bleiben draußen."
+        description="Teilbarer Link für Mobile.de & Kleinanzeigen"
       >
         <ExposeLinkSettings
           tagUuid={tagUuid}

@@ -44,8 +44,8 @@ export default async function VehicleStoryPassSettingsPage({
       <VehicleSettingsSubpageShell
         tagUuid={tagUuid}
         vehicleSurfaceScope={scope}
-        title="Story-Pass"
-        description="Format und Stil wählen — Story oder Post, optional mit Wochenplatzierung."
+        title="Story teilen"
+        description="Story 9:16 oder Post 3:4"
         theme="discover"
       >
         <IOSGroupedList>

@@ -35,7 +35,15 @@ import { AuthLegalConsentNotice } from "@/components/legal/auth-legal-consent-no
 import { GarageDataTrustBanner } from "@/components/trust/garage-data-trust-banner";
 import { ClaimTwinPreviewCard } from "@/components/tags/claim/ClaimTwinPreviewCard";
 import { BuildPersonalityChipPicker } from "@/components/tags/claim/BuildPersonalityChipPicker";
+import {
+  ClaimEngineSoundPicker,
+  type ClaimEngineSoundSelection,
+} from "@/components/tags/claim/ClaimEngineSoundPicker";
 import { ClaimVehiclePhotoPicker } from "@/components/tags/claim/ClaimVehiclePhotoPicker";
+import {
+  flushPendingOnboardingEngineSound,
+  storePendingOnboardingEngineSound,
+} from "@/lib/onboarding/pending-onboarding-engine-sound";
 import { ClaimWizardPanel } from "@/components/tags/claim/ClaimWizardPanel";
 import {
   clearOnboardingVehiclePhotoSkipped,
@@ -47,7 +55,6 @@ import { writeSilhouettePreviewToSession } from "@/lib/vehicles/silhouette-previ
 import { uploadVehiclePhotoClient } from "@/lib/vehicles/upload-vehicle-photo-client";
 import type { BuildPersonalityChipId } from "@/lib/vehicles/build-personality-chips";
 import { DEFAULT_OIL_INTERVAL_KM, DEFAULT_OIL_INTERVAL_MONTHS } from "@/lib/documents/oil-changes";
-import { formatMileageKmNumber } from "@/lib/documents/format";
 import {
   claimWizardPreviousStep,
   claimWizardStepIndex,
@@ -58,9 +65,6 @@ import {
 import {
   VEHICLE_DRIVETRAIN_TYPES,
   VEHICLE_FUEL_TYPES,
-  OIL_CHANGE_INTERVAL_KM_OPTIONS,
-  OIL_CHANGE_INTERVAL_MONTHS_OPTIONS,
-  formatOilChangeIntervalMonthsLabel,
   isAccelSecondsInputDraft,
 } from "@/lib/vehicles/tech-specs";
 
@@ -96,12 +100,9 @@ export function ClaimFlow({
   const [vmaxKmh, setVmaxKmh] = useState("");
   const [drivetrain, setDrivetrain] = useState("");
   const [fuelType, setFuelType] = useState("");
-  const [oilChangeIntervalKm, setOilChangeIntervalKm] = useState(
-    String(DEFAULT_OIL_INTERVAL_KM),
-  );
-  const [oilChangeIntervalMonths, setOilChangeIntervalMonths] = useState(
-    String(DEFAULT_OIL_INTERVAL_MONTHS),
-  );
+  // Defaults only — the interval is no longer asked in onboarding.
+  const oilChangeIntervalKm = String(DEFAULT_OIL_INTERVAL_KM);
+  const oilChangeIntervalMonths = String(DEFAULT_OIL_INTERVAL_MONTHS);
   const [name, setName] = useState(() => initialDisplayName?.trim() ?? "");
   const [email, setEmail] = useState(userEmail ?? "");
   const [password, setPassword] = useState("");
@@ -120,6 +121,8 @@ export function ClaimFlow({
     null,
   );
   const [vehiclePhotoSkipped, setVehiclePhotoSkipped] = useState(false);
+  const [engineSound, setEngineSound] =
+    useState<ClaimEngineSoundSelection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -165,16 +168,6 @@ export function ClaimFlow({
     setError(null);
     setInfo(null);
     setStep(next);
-  }
-
-  function validateOilInterval(): string | null {
-    if (!oilChangeIntervalKm.trim()) {
-      return "Bitte ein Ölwechsel-Intervall wählen.";
-    }
-    if (!oilChangeIntervalMonths.trim()) {
-      return "Bitte ein Monats-Intervall wählen.";
-    }
-    return null;
   }
 
   function goBack() {
@@ -272,6 +265,14 @@ export function ClaimFlow({
     vehicleId: string,
     linkedTagUuid?: string,
   ) {
+    if (engineSound) {
+      // Staged first so a failed upload is retried from the dashboard.
+      await stageEngineSound();
+      await flushPendingOnboardingEngineSound({
+        vehicleId,
+        tagUuid: linkedTagUuid,
+      });
+    }
     if (vehiclePhotoFile) {
       try {
         const uploaded = await uploadVehiclePhotoClient({
@@ -295,6 +296,7 @@ export function ClaimFlow({
   }
 
   async function persistPhotoForDeferredSignup() {
+    await stageEngineSound();
     if (vehiclePhotoFile) {
       await storePendingOnboardingVehiclePhoto(vehiclePhotoFile);
       return;
@@ -302,6 +304,14 @@ export function ClaimFlow({
     if (vehiclePhotoSkipped) {
       markOnboardingVehiclePhotoSkipped();
     }
+  }
+
+  async function stageEngineSound() {
+    if (!engineSound) return;
+    await storePendingOnboardingEngineSound(
+      engineSound.file,
+      engineSound.durationSeconds,
+    );
   }
 
   function garageVehicleStagePayload() {
@@ -322,7 +332,7 @@ export function ClaimFlow({
     const vehicleError = validateVehicle();
     if (vehicleError) {
       setError(vehicleError);
-      setStep(validateMakeModel() ? "makeModel" : "year");
+      setStep("makeModel");
       return false;
     }
 
@@ -352,7 +362,7 @@ export function ClaimFlow({
     const vehicleError = validateVehicle();
     if (vehicleError) {
       setError(vehicleError);
-      setStep(validateMakeModel() ? "makeModel" : "year");
+      setStep("makeModel");
       return;
     }
 
@@ -531,15 +541,15 @@ export function ClaimFlow({
         {step === "makeModel" ? (
           <ClaimWizardPanel
             kicker={stepKicker("makeModel")}
-            title="Marke & Modell"
-            copy="Wie heißt dein Fahrzeug? Das steht gleich auf deiner digitalen Visitenkarte."
+            title="Dein Fahrzeug"
+            copy="Steht gleich auf deiner Quartett-Karte."
           >
             <form
               className="mt-6 grid w-full gap-4"
               onSubmit={(event) => {
                 event.preventDefault();
                 setError(null);
-                const validationError = validateMakeModel();
+                const validationError = validateMakeModel() ?? validateYear();
                 if (validationError) {
                   setError(validationError);
                   return;
@@ -547,13 +557,13 @@ export function ClaimFlow({
                 advance("vehiclePhoto");
               }}
             >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3">
                 <ClaimField
                   id="claim-make"
                   label="Marke"
                   value={make}
                   onChange={setMake}
-                  placeholder="Toyota"
+                  placeholder="BMW"
                   required
                 />
                 <ClaimField
@@ -561,89 +571,10 @@ export function ClaimFlow({
                   label="Modell"
                   value={model}
                   onChange={setModel}
-                  placeholder="Supra"
+                  placeholder="M3"
                   required
                 />
               </div>
-              <ClaimSlideActions
-                error={error}
-                pending={pending}
-                onBack={goBack}
-                submitLabel="Weiter"
-                showBack
-              />
-            </form>
-          </ClaimWizardPanel>
-        ) : null}
-
-        {step === "vehiclePhoto" ? (
-          <ClaimWizardPanel
-            kicker={stepKicker("vehiclePhoto")}
-            title="Fahrzeugfoto"
-            copy="Zeig dein Auto im Dashboard — ein Foto aus Galerie oder Kamera reicht. Du kannst es auch gleich überspringen."
-          >
-            <form
-              className="mt-6 grid w-full gap-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                setError(null);
-                setVehiclePhotoSkipped(false);
-                advance("year");
-              }}
-            >
-              <ClaimVehiclePhotoPicker
-                previewUrl={vehiclePhotoPreview}
-                onPreviewChange={setVehiclePhotoPreview}
-                onFileChange={(file) => {
-                  setVehiclePhotoFile(file);
-                  if (file) setVehiclePhotoSkipped(false);
-                }}
-                disabled={pending}
-              />
-              <button
-                type="button"
-                className="text-center text-[0.8rem] text-[color:var(--vd-muted)] underline-offset-2 hover:underline"
-                disabled={pending}
-                onClick={() => {
-                  setVehiclePhotoFile(null);
-                  setVehiclePhotoPreview(null);
-                  setVehiclePhotoSkipped(true);
-                  advance("year");
-                }}
-              >
-                Später — ohne Foto fortfahren
-              </button>
-              <ClaimSlideActions
-                error={error}
-                pending={pending}
-                onBack={goBack}
-                submitLabel="Weiter"
-                submitIcon="next"
-                showBack
-              />
-            </form>
-          </ClaimWizardPanel>
-        ) : null}
-
-        {step === "year" ? (
-          <ClaimWizardPanel
-            kicker={stepKicker("year")}
-            title="Baujahr"
-            copy="Das Baujahr hilft bei der Zuordnung deiner Dokumente. Die VIN kannst du optional ergänzen."
-          >
-            <form
-              className="mt-6 grid w-full gap-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                setError(null);
-                const validationError = validateYear();
-                if (validationError) {
-                  setError(validationError);
-                  return;
-                }
-                advance("power");
-              }}
-            >
               <ClaimYearPickerField
                 id="claim-year"
                 label="Baujahr"
@@ -662,6 +593,56 @@ export function ClaimFlow({
                 pending={pending}
                 onBack={goBack}
                 submitLabel="Weiter"
+                submitIcon="next"
+                showBack
+              />
+            </form>
+          </ClaimWizardPanel>
+        ) : null}
+
+        {step === "vehiclePhoto" ? (
+          <ClaimWizardPanel
+            kicker={stepKicker("vehiclePhoto")}
+            title="Look & Sound"
+            copy="Foto und Motorsound für deinen Showcase. Beides optional."
+          >
+            <form
+              className="mt-6 grid w-full gap-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(null);
+                setVehiclePhotoSkipped(!vehiclePhotoFile);
+                advance("power");
+              }}
+            >
+              <div className="grid gap-2">
+                <p className="claim-section-label">Fahrzeugfoto</p>
+                <ClaimVehiclePhotoPicker
+                  previewUrl={vehiclePhotoPreview}
+                  onPreviewChange={setVehiclePhotoPreview}
+                  onFileChange={(file) => {
+                    setVehiclePhotoFile(file);
+                    if (file) setVehiclePhotoSkipped(false);
+                  }}
+                  disabled={pending}
+                />
+              </div>
+              <div className="grid gap-2">
+                <p className="claim-section-label">Soundcheck</p>
+                <ClaimEngineSoundPicker
+                  value={engineSound}
+                  onChange={setEngineSound}
+                  disabled={pending}
+                />
+              </div>
+              <ClaimSlideActions
+                error={error}
+                pending={pending}
+                onBack={goBack}
+                submitLabel={
+                  vehiclePhotoFile || engineSound ? "Weiter" : "Überspringen"
+                }
+                submitIcon="next"
                 showBack
               />
             </form>
@@ -671,45 +652,37 @@ export function ClaimFlow({
         {step === "power" ? (
           <ClaimWizardPanel
             kicker={stepKicker("power")}
-            title="Leistung & Fahrwerte"
-            copy="Optional — deine Quartett-Karte oben füllt sich live mit jedem Wert."
+            title="Leistung & Antrieb"
+            copy="Optional. Die Karte oben füllt sich live."
           >
             <form
               className="mt-6 grid w-full gap-4"
               onSubmit={(event) => {
                 event.preventDefault();
                 setError(null);
-                advance("drivetrain");
+                advance("buildPersonality");
               }}
             >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3">
                 <ClaimField
                   id="claim-power-ps"
                   label="PS"
                   value={powerPs}
                   onChange={setPowerPs}
                   inputMode="numeric"
-                  placeholder="231"
+                  placeholder="431"
                 />
                 <ClaimField
                   id="claim-torque-nm"
-                  label="Drehmoment (Nm)"
+                  label="Nm"
                   value={torqueNm}
                   onChange={setTorqueNm}
                   inputMode="numeric"
-                  placeholder="350"
-                />
-                <ClaimField
-                  id="claim-displacement"
-                  label="Hubraum (ccm)"
-                  value={displacementCc}
-                  onChange={setDisplacementCc}
-                  inputMode="numeric"
-                  placeholder="2998"
+                  placeholder="550"
                 />
                 <ClaimField
                   id="claim-accel-0-100"
-                  label="0–100 km/h (s)"
+                  label="0–100 (s)"
                   value={accel0To100Sec}
                   onChange={(value) => {
                     if (isAccelSecondsInputDraft(value)) {
@@ -717,19 +690,7 @@ export function ClaimFlow({
                     }
                   }}
                   inputMode="decimal"
-                  placeholder="5,2"
-                />
-                <ClaimField
-                  id="claim-accel-100-200"
-                  label="100–200 km/h (s)"
-                  value={accel100To200Sec}
-                  onChange={(value) => {
-                    if (isAccelSecondsInputDraft(value)) {
-                      setAccel100To200Sec(value);
-                    }
-                  }}
-                  inputMode="decimal"
-                  placeholder="12,4"
+                  placeholder="4,1"
                 />
                 <ClaimField
                   id="claim-vmax-kmh"
@@ -739,33 +700,6 @@ export function ClaimFlow({
                   inputMode="numeric"
                   placeholder="250"
                 />
-              </div>
-              <ClaimSlideActions
-                error={error}
-                pending={pending}
-                onBack={goBack}
-                submitLabel="Weiter"
-                showBack
-              />
-            </form>
-          </ClaimWizardPanel>
-        ) : null}
-
-        {step === "drivetrain" ? (
-          <ClaimWizardPanel
-            kicker={stepKicker("drivetrain")}
-            title="Antrieb & Kraftstoff"
-            copy="Optional. Als Nächstes legst du dein Ölwechsel-Intervall fest."
-          >
-            <form
-              className="mt-6 grid w-full gap-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                setError(null);
-                advance("oilInterval");
-              }}
-            >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <ClaimSelectField
                   id="claim-drivetrain"
                   label="Antrieb"
@@ -781,58 +715,31 @@ export function ClaimFlow({
                   options={VEHICLE_FUEL_TYPES}
                 />
               </div>
-              <ClaimSlideActions
-                error={error}
-                pending={pending}
-                onBack={goBack}
-                submitLabel="Weiter"
-                showBack
-              />
-            </form>
-          </ClaimWizardPanel>
-        ) : null}
-
-        {step === "oilInterval" ? (
-          <ClaimWizardPanel
-            kicker={stepKicker("oilInterval")}
-            title="Ölwechsel-Intervall"
-            copy="Wie oft soll der nächste Ölwechsel fällig sein? Standard ist 10.000 km — du kannst es später in den Fahrzeugdaten anpassen."
-          >
-            <form
-              className="mt-6 grid w-full gap-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                setError(null);
-                const validationError = validateOilInterval();
-                if (validationError) {
-                  setError(validationError);
-                  return;
-                }
-                advance("buildPersonality");
-              }}
-            >
-              <ClaimSelectField
-                id="claim-oil-interval-km"
-                label="Intervall (km)"
-                value={oilChangeIntervalKm}
-                onChange={setOilChangeIntervalKm}
-                required
-                options={OIL_CHANGE_INTERVAL_KM_OPTIONS.map((km) => ({
-                  value: String(km),
-                  label: `${formatMileageKmNumber(km)} km`,
-                }))}
-              />
-              <ClaimSelectField
-                id="claim-oil-interval-months"
-                label="Intervall (Monate)"
-                value={oilChangeIntervalMonths}
-                onChange={setOilChangeIntervalMonths}
-                required
-                options={OIL_CHANGE_INTERVAL_MONTHS_OPTIONS.map((months) => ({
-                  value: String(months),
-                  label: formatOilChangeIntervalMonthsLabel(months),
-                }))}
-              />
+              <details className="claim-more">
+                <summary>Mehr Werte (Hubraum, 100–200 km/h)</summary>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <ClaimField
+                    id="claim-displacement"
+                    label="Hubraum (ccm)"
+                    value={displacementCc}
+                    onChange={setDisplacementCc}
+                    inputMode="numeric"
+                    placeholder="2979"
+                  />
+                  <ClaimField
+                    id="claim-accel-100-200"
+                    label="100–200 (s)"
+                    value={accel100To200Sec}
+                    onChange={(value) => {
+                      if (isAccelSecondsInputDraft(value)) {
+                        setAccel100To200Sec(value);
+                      }
+                    }}
+                    inputMode="decimal"
+                    placeholder="12,4"
+                  />
+                </div>
+              </details>
               <ClaimSlideActions
                 error={error}
                 pending={pending}
@@ -849,7 +756,7 @@ export function ClaimFlow({
           <ClaimWizardPanel
             kicker={stepKicker("buildPersonality")}
             title="Wie würdest du deinen Build nennen?"
-            copy="Wähle bis zu fünf Vibes — sie erscheinen in deinem Showcase und beim Build-Swipe."
+            copy="Bis zu fünf. Erscheinen im Showcase."
           >
             <form
               className="mt-6 grid w-full gap-4"
@@ -879,7 +786,7 @@ export function ClaimFlow({
           <ClaimWizardPanel
             kicker={stepKicker("preferences")}
             title="Was ist dir am wichtigsten?"
-            copy="Wir passen dein Dashboard und dein Erlebnis basierend auf der Antwort an."
+            copy="Danach richten wir dein Dashboard aus."
           >
             <form
               className="mt-6 grid w-full gap-4"

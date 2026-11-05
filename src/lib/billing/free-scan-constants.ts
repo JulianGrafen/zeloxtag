@@ -1,7 +1,7 @@
 import { MAX_FREE_FUEL_SCANS } from "@/lib/billing/subscription-config";
 
 /** Complimentary KI invoice/service scans per vehicle owner account on Free. */
-export const FREE_AI_INVOICE_SCAN_LIMIT = 2;
+export const FREE_AI_INVOICE_SCAN_LIMIT = 3;
 
 /** One complimentary KI ABE scan per vehicle owner account. */
 export const FREE_AI_ABE_SCAN_LIMIT = 1;

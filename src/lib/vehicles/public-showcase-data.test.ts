@@ -80,7 +80,7 @@ describe("buildPublicShowcasePayload", () => {
 
     const payload = buildPublicShowcasePayload(baseVehicle, documents);
     expect(payload.profile.hideFinancials).toBe(true);
-    expect(payload.modifications[0]).not.toHaveProperty("amount");
+    expect(payload.modifications[0]?.amount).toBeNull();
     expect(payload.profile.mileageKm).toBe(142000);
     expect(payload.profile.powerPs).toBe(320);
     expect(payload.profile.torqueNm).toBe(427);
@@ -88,6 +88,31 @@ describe("buildPublicShowcasePayload", () => {
     expect(payload.profile.drivetrain).toBe("Heckantrieb");
     expect(payload.profile.fuelType).toBe("Benzin");
     expect(payload.profile.transmission).toBe("6-Gang manuell");
+  });
+
+  it("maps stored umbau photos to modification imageSrc", () => {
+    const photoPath = `${baseVehicle.id}/felgen.jpg`;
+    const documents: Document[] = [
+      baseInvoice({
+        id: "umbau-photo",
+        invoice_number: "__manual__",
+        title: "Felgen",
+        category: "tuning",
+        file_url: photoPath,
+        line_items: null,
+        amount: 1050,
+        date: "2026-03-15",
+      }),
+    ];
+
+    const payload = buildPublicShowcasePayload(baseVehicle, documents);
+    expect(payload.modifications[0]?.label).toBe("Felgen");
+    expect(payload.modifications[0]?.imageSrc).toContain(
+      `/api/public/vehicle/${baseVehicle.id}/file`,
+    );
+    expect(payload.modifications[0]?.imageSrc).toContain(
+      encodeURIComponent(photoPath),
+    );
   });
 
   it("exposes a sanitized Instagram handle and never VIN or owner id", () => {
@@ -151,8 +176,8 @@ describe("buildPublicShowcasePayload", () => {
     );
   });
 
-  it("never exposes invoice amounts on the public showroom payload", () => {
-    const vehicle = { ...baseVehicle, hide_financials: false };
+  it("hides modification amounts when hide_financials is true", () => {
+    const vehicle = { ...baseVehicle, hide_financials: true };
     const documents: Document[] = [
       baseInvoice({
         id: "doc-2",
@@ -167,8 +192,24 @@ describe("buildPublicShowcasePayload", () => {
     ];
 
     const payload = buildPublicShowcasePayload(vehicle, documents);
-    expect(payload.modifications[0]).not.toHaveProperty("amount");
+    expect(payload.modifications[0]?.amount).toBeNull();
     expect(JSON.stringify(payload)).not.toContain("480");
+  });
+
+  it("exposes modification amounts when hide_financials is false", () => {
+    const vehicle = { ...baseVehicle, hide_financials: false };
+    const documents: Document[] = [
+      baseInvoice({
+        id: "doc-2",
+        title: "Federn",
+        line_items: [{ label: "H&R Sportfedern", amount: 480 }],
+        invoice_number: "RE-2",
+        amount: 480,
+      }),
+    ];
+
+    const payload = buildPublicShowcasePayload(vehicle, documents);
+    expect(payload.modifications[0]?.amount).toBe(480);
   });
 
   it("excludes documents not marked for public showcase", () => {
@@ -196,7 +237,7 @@ describe("buildPublicShowcasePayload", () => {
     );
     expect(payload.modifications).toHaveLength(1);
     expect(payload.modifications[0]?.label).toBe("GReddy GT-Flügel");
-    expect(payload.modifications[0]).not.toHaveProperty("amount");
+    expect(payload.modifications[0]?.amount).toBe(2380);
   });
 
   it("includes opted-in Umbau-Bilder stored as invoice + manual marker", () => {

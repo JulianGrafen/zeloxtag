@@ -20,8 +20,8 @@ export function buildEgoStatsSegments(
   if (weeklyRank != null && weeklyRank.weeklyLikes >= 1) {
     likes =
       weeklyRank.weeklyLikes === 1
-        ? "1 Like"
-        : `${weeklyRank.weeklyLikes} Likes`;
+        ? "1 Vote"
+        : `${weeklyRank.weeklyLikes} Votes`;
   }
 
   const winRate =

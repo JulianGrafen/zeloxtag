@@ -9,6 +9,7 @@ import {
 } from "@/lib/billing/membership-store";
 import { extractUnguessableOrderSecret } from "@/lib/billing/shopify-membership";
 import { AppShell } from "@/components/layout/app-shell";
+import { isTagScanEmailEnabled } from "@/lib/tags/tag-scan-notify";
 import { MembershipStatusCard } from "@/components/billing/membership-status-card";
 import { SettingsScreen } from "@/components/settings/settings-screen";
 import { accountHasPasswordLogin } from "@/lib/auth/account-password";
@@ -97,6 +98,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         dashboardHref={dashboardHref}
         mfaSubtitle={mfaSubtitle}
         maintenanceEmailReminders={maintenanceEmailReminders}
+        tagScanEmailNotifications={isTagScanEmailEnabled(user.user_metadata)}
         deletionState={deletionState}
         hasPasswordLogin={hasPasswordLogin}
         membershipSection={

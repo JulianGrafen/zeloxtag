@@ -58,7 +58,7 @@ export function EgoStatsBar({
 
   const rank = ownWeeklyRank?.rank ?? 0;
   const likeWord =
-    ownWeeklyRank?.weeklyLikes === 1 ? "Like" : "Likes";
+    ownWeeklyRank?.weeklyLikes === 1 ? "Vote" : "Votes";
   const topThree = hasRank && discoverRankIsTopThree(rank);
 
   return (

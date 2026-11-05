@@ -774,6 +774,39 @@ export type Database = {
           },
         ];
       };
+      tag_scan_events: {
+        Row: {
+          id: string;
+          vehicle_id: string;
+          tag_id: string | null;
+          scanned_at: string;
+          city: string | null;
+          region: string | null;
+          country: string | null;
+          notified_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          vehicle_id: string;
+          tag_id?: string | null;
+          scanned_at?: string;
+          city?: string | null;
+          region?: string | null;
+          country?: string | null;
+          notified_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          vehicle_id?: string;
+          tag_id?: string | null;
+          scanned_at?: string;
+          city?: string | null;
+          region?: string | null;
+          country?: string | null;
+          notified_at?: string | null;
+        };
+        Relationships: [];
+      };
       service_records: {
         Row: ServiceRecordRow;
         Insert: {
@@ -1060,6 +1093,14 @@ export type Database = {
       showcase_swipe_calendar_week_date: {
         Args: { p_at?: string };
         Returns: string;
+      };
+      showcase_vote_total: {
+        Args: { p_vehicle_id: string };
+        Returns: number;
+      };
+      cast_showcase_vote: {
+        Args: { p_vehicle_id: string; p_voter_hash: string; p_user_id?: string | null };
+        Returns: Json;
       };
       register_anonymous_swipe: {
         Args: {

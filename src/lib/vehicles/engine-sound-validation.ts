@@ -91,7 +91,12 @@ export function validateEngineSoundUploadBytes(
   clientDurationSeconds?: number | null,
 ): EngineSoundValidationResult {
   const fromFile = measureEngineSoundDurationSeconds(bytes, filename, mime);
-  const durationSeconds = fromFile ?? clientDurationSeconds ?? null;
+  const durationSeconds =
+    clientDurationSeconds != null &&
+    Number.isFinite(clientDurationSeconds) &&
+    clientDurationSeconds > 0
+      ? clientDurationSeconds
+      : (fromFile ?? null);
 
   const meta = validateEngineSoundMeta(
     mime,

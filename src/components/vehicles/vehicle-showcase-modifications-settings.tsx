@@ -2,20 +2,23 @@
 
 import { useMemo, useState } from "react";
 
-import { IOSGroupedList } from "@/components/ui/ios";
+import { Camera, ScanLine, Wrench } from "lucide-react";
+
+import {
+  IOSGroupedList,
+  InsetGroupedCard,
+  InsetListRow,
+} from "@/components/ui/ios";
 import { ShowcaseBuildStoryChronikSection } from "@/components/vehicles/showcase-build-story-chronik-section";
 import { ShowcaseDocCollapsibleGroup } from "@/components/vehicles/showcase-doc-collapsible-group";
 import { ShowcaseDocumentPicker } from "@/components/vehicles/showcase-document-picker";
 import { ShowcaseModificationIosRow } from "@/components/vehicles/showcase-modification-ios-row";
-import { UmbautenSettingsScanFab } from "@/components/vehicles/umbauten-settings-scan-fab";
-import { PressableLink } from "@/components/vehicle-dashboard/Pressable";
 import { usePublicShowcaseDocumentSelection } from "@/hooks/use-public-showcase-document-selection";
 import {
   MANUAL_ENTRY_CATEGORY_LABELS,
   parseManualEntryCategory,
 } from "@/lib/documents/manual-entries";
 import { formatCompactGermanDate } from "@/lib/documents/format";
-import { documentsListHref } from "@/lib/vehicle-surface/documents-list-href";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
 import { partitionShowcaseSelectableDocuments } from "@/lib/vehicles/public-showcase-documents";
@@ -86,7 +89,9 @@ export function VehicleShowcaseModificationsSettings({
   canEdit,
   hasLinkedTag,
 }: VehicleShowcaseModificationsSettingsProps) {
-  const belegeHref = documentsListHref(tagUuid, "invoice", vehicleSurfaceScope);
+  const scanHref = vehicleSurfaceScope
+    ? vehicleSurfaceHref(vehicleSurfaceScope, "?scan=1&type=invoice")
+    : `/v/${tagUuid}?scan=1&type=invoice`;
   const umbautenHref = vehicleSurfaceScope
     ? `${vehicleSurfaceHref(vehicleSurfaceScope, "umbauten")}?neu=1`
     : `/v/${tagUuid}/umbauten?neu=1`;
@@ -162,40 +167,42 @@ export function VehicleShowcaseModificationsSettings({
   }
 
   const hasProfileContent = profileGroups.length > 0;
+  const modificationsFooter =
+    modifications.length > 0
+      ? `${modifications.length} ${modifications.length === 1 ? "Umbau" : "Umbauten"}${
+          selectedModificationCount > 0
+            ? ` · ${selectedModificationCount} im Showcase`
+            : ""
+        }. Im Showcase mit Fotos, Preise bleiben privat.`
+      : "Noch keine Umbauten.";
 
   return (
-    <div className="flex flex-col gap-5">
-      <ShowcaseBuildStoryChronikSection
-        vehicle={vehicle}
-        documents={documents}
-        tagUuid={tagUuid}
-        vehicleSurfaceScope={vehicleSurfaceScope}
-        canEdit={canEdit}
-        hasLinkedTag={hasLinkedTag}
-        showPublishHint={showPublishHint}
-        onDismissPublishHint={() => setShowPublishHint(false)}
-      />
-
-      <IOSGroupedList
-        headerTitle="Umbauten"
-        footerText={
-          modifications.length > 0
-            ? `${modifications.length} Einträge${
-                selectedModificationCount > 0
-                  ? ` · ${selectedModificationCount} im Showcase`
-                  : ""
-              }`
-            : "Manuelle Umbauten mit Foto — ideal für die Build-Chronik."
-        }
-      >
-        {canEdit ? (
-          <PressableLink
+    <div className="flex flex-col gap-6">
+      {canEdit ? (
+        <InsetGroupedCard
+          header="Hinzufügen"
+        >
+          <InsetListRow
             href={umbautenHref}
-            className="flex w-full items-center justify-center border-b border-white/10 px-4 py-3.5 text-[15px] font-semibold text-[#0A84FF]"
-          >
-            Umbau mit Foto
-          </PressableLink>
-        ) : null}
+            icon={Camera}
+            iconTone="amber"
+            emphasis="navigation"
+            label="Umbau mit Foto"
+            chevron
+          />
+          <InsetListRow
+            href={scanHref}
+            icon={ScanLine}
+            iconTone="blue"
+            emphasis="navigation"
+            label="Rechnung scannen"
+            chevron
+            isLast
+          />
+        </InsetGroupedCard>
+      ) : null}
+
+      <IOSGroupedList headerTitle="Umbauten" footerText={modificationsFooter}>
         {modifications.length > 0 ? (
           modifications.map((doc, index) => (
             <ShowcaseModificationIosRow
@@ -212,26 +219,24 @@ export function VehicleShowcaseModificationsSettings({
             />
           ))
         ) : (
-          <div className="px-4 py-6 text-center">
+          <div className="flex flex-col items-center gap-2 px-4 py-7 text-center">
+            <span
+              aria-hidden
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-zinc-400"
+            >
+              <Wrench className="h-5 w-5" strokeWidth={1.75} />
+            </span>
             <p className="text-[13px] leading-relaxed text-zinc-500">
-              Noch keine Umbauten.
+              Deine Umbauten erscheinen hier.
             </p>
-            {canEdit ? (
-              <PressableLink
-                href={umbautenHref}
-                className="mt-3 inline-block text-[14px] font-semibold text-[#0A84FF]"
-              >
-                Ersten Umbau anlegen
-              </PressableLink>
-            ) : null}
           </div>
         )}
       </IOSGroupedList>
 
       {hasProfileContent ? (
         <IOSGroupedList
-          headerTitle="Im Profil zeigen"
-          footerText="Manuelle Einträge und Rechnungen für dein öffentliches Showcase."
+          headerTitle="Weitere Einträge & Rechnungen"
+          footerText="Positionen im Showcase mit Fotos. Preise zeigst du nur, wenn du sie unter Öffentliches Profil freigibst."
         >
           {profileGroups.map((group, index) => (
             <ShowcaseDocCollapsibleGroup
@@ -255,44 +260,26 @@ export function VehicleShowcaseModificationsSettings({
             </ShowcaseDocCollapsibleGroup>
           ))}
         </IOSGroupedList>
-      ) : modifications.length === 0 ? (
-        <IOSGroupedList headerTitle="Im Profil zeigen">
-          <div className="px-4 py-5 text-center">
-            <p className="text-[13px] leading-relaxed text-zinc-500">
-              Noch keine Belege oder Einträge.
-            </p>
-            {canEdit ? (
-              <div className="mt-3 flex flex-col gap-2">
-                <PressableLink
-                  href={umbautenHref}
-                  className="text-[14px] font-semibold text-[#0A84FF]"
-                >
-                  Umbauten hinzufügen
-                </PressableLink>
-                <PressableLink
-                  href={belegeHref}
-                  className="text-[14px] font-semibold text-[#0A84FF]"
-                >
-                  Rechnung scannen
-                </PressableLink>
-              </div>
-            ) : null}
-          </div>
-        </IOSGroupedList>
       ) : null}
+
+      <ShowcaseBuildStoryChronikSection
+        vehicle={vehicle}
+        documents={documents}
+        tagUuid={tagUuid}
+        vehicleSurfaceScope={vehicleSurfaceScope}
+        canEdit={canEdit}
+        hasLinkedTag={hasLinkedTag}
+        showPublishHint={showPublishHint}
+        onDismissPublishHint={() => setShowPublishHint(false)}
+      />
 
       {message ? (
-        <p className="text-[0.82rem] text-[color:var(--vd-accent)]">{message}</p>
+        <p className="px-4 text-[13px] text-[#30D158]">{message}</p>
       ) : null}
       {error ? (
-        <p className="text-[0.82rem] text-red-600" role="alert">{error}</p>
-      ) : null}
-
-      {canEdit ? (
-        <UmbautenSettingsScanFab
-          tagUuid={tagUuid}
-          vehicleSurfaceScope={vehicleSurfaceScope}
-        />
+        <p className="px-4 text-[13px] text-[#FF453A]" role="alert">
+          {error}
+        </p>
       ) : null}
     </div>
   );

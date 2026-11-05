@@ -1,12 +1,17 @@
+/**
+ * Onboarding wizard steps. Kept short on purpose — every extra screen loses
+ * owners. Oil interval uses defaults (editable later in Fahrzeugdaten).
+ *
+ * - `makeModel`: Marke, Modell, Baujahr, VIN
+ * - `vehiclePhoto`: „Look & Sound“ — Fahrzeugfoto + optionaler Soundcheck
+ * - `power`: Leistung, Fahrwerte, Antrieb, Kraftstoff
+ */
 export type ClaimWizardStep =
   | "intro"
   | "painPoint"
   | "makeModel"
   | "vehiclePhoto"
-  | "year"
   | "power"
-  | "drivetrain"
-  | "oilInterval"
   | "buildPersonality"
   | "preferences"
   | "profileName"
@@ -21,10 +26,7 @@ const VEHICLE_STEPS: ClaimWizardStep[] = [
   "painPoint",
   "makeModel",
   "vehiclePhoto",
-  "year",
   "power",
-  "drivetrain",
-  "oilInterval",
   "buildPersonality",
   "preferences",
 ];

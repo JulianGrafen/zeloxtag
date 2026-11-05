@@ -258,6 +258,12 @@ export async function updateManualVehicleEntry(
     patch.show_on_build_story = wantsBuildStory && hasImage;
   }
 
+  // Showcase visibility of the position (photo + title only, never the price).
+  if (formData.has("showOnPublicShowcase")) {
+    patch.show_on_public_showcase =
+      String(formData.get("showOnPublicShowcase")) === "true";
+  }
+
   const { error: updateError } = await admin
     .from("documents")
     .update(patch)

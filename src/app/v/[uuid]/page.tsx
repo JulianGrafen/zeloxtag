@@ -9,6 +9,8 @@ import { PrivateTwinGate } from "@/components/tags/private-twin-gate";
 import { TagDashboardShell } from "@/components/tags/tag-dashboard-shell";
 import { TagDashboardView } from "@/components/tags/tag-dashboard-view";
 import { TagNotFound } from "@/components/tags/tag-not-found";
+import { TagScanBeacon } from "@/components/tags/tag-scan-beacon";
+import { loadShowcaseVoteTotal } from "@/lib/showcase/showcase-votes";
 import { TagScanRitualGate } from "@/components/tags/tag-scan-ritual-gate";
 import { isTagScanRitualSuppressedBySearch } from "@/lib/tags/tag-scan-ritual";
 import { PublicProfilePrivate } from "@/components/public-showcase/PublicProfilePrivate";
@@ -53,6 +55,7 @@ import {
 import { buildDemoAulitzkyPublicShowcasePayload } from "@/lib/demo/demo-aulitzky-showcase";
 import { buildDemoUndergroundGaragePublicShowcasePayload } from "@/lib/demo/demo-underground-garage-showcase";
 import { buildDemoRwEditionPublicShowcasePayload } from "@/lib/demo/demo-rw-edition-showcase";
+import { buildDemoAutohausKemperPublicShowcasePayload } from "@/lib/demo/demo-autohaus-kemper-showcase";
 import {
   buildDemoPublicShowcasePayload,
   enrichDemoShowcaseVehicle,
@@ -190,6 +193,8 @@ type PublicShowcaseRenderOptions = {
   discoverBackHref?: string | null;
   tagUuid?: string;
   playScanRitual?: boolean;
+  /** Physical QR scan of an active tag (not a shared slug link) — fires Live-Scan. */
+  recordTagScan?: boolean;
 };
 
 async function renderPublicShowcase(
@@ -279,8 +284,16 @@ async function renderPublicShowcase(
     options?.tagUuid?.trim() || payload.profile.publicSlug?.trim() || vehicle.id;
   const playScanRitual = options?.playScanRitual ?? true;
 
+  payload = {
+    ...payload,
+    voteTotal: await loadShowcaseVoteTotal(vehicleForPayload.id),
+  };
+
   return (
     <TagScanRitualGate tagUuid={ritualTagUuid} enabled={playScanRitual}>
+      {options?.recordTagScan && options.tagUuid ? (
+        <TagScanBeacon tagUuid={options.tagUuid} />
+      ) : null}
       <PublicShowcaseView
         data={payload}
         showDiscoverBack={options?.showDiscoverBack ?? false}
@@ -460,6 +473,7 @@ export default async function TagScanPage({
           return renderPublicShowcase(vehicle, {
             tagUuid: tag.uuid,
             playScanRitual,
+            recordTagScan: true,
           });
         }
         redirect("/profil-nicht-verfuegbar");
@@ -467,6 +481,7 @@ export default async function TagScanPage({
       return renderPublicShowcase(vehicle, {
         tagUuid: tag.uuid,
         playScanRitual,
+        recordTagScan: true,
       });
     }
 
@@ -498,6 +513,17 @@ export default async function TagScanPage({
           <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
             <PublicShowcaseView
               data={buildDemoRwEditionPublicShowcasePayload()}
+              revealShowroomStatsOnMount
+            />
+          </TagScanRitualGate>
+        );
+      }
+
+      if (tag.uuid === MOCK_TAG_UUIDS.kemper) {
+        return (
+          <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
+            <PublicShowcaseView
+              data={buildDemoAutohausKemperPublicShowcasePayload()}
               revealShowroomStatsOnMount
             />
           </TagScanRitualGate>
@@ -552,6 +578,7 @@ export default async function TagScanPage({
       return (
         <AppShell showNavbar={false}>
           <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
+            <TagScanBeacon tagUuid={tag.uuid} />
             <PrivateTwinGate
               tagUuid={tag.uuid}
               vehicleLabel={vehicleTitle(vehicle.make, vehicle.model, vehicle.year)}

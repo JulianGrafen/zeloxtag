@@ -36,7 +36,7 @@ export default async function VehicleFahrzeugbildPage({
         backHref={`${vehicleSurfaceHref(scope, `daten`)}`}
         backLabel="Technische Daten"
         title="Fahrzeugbild"
-        description="Dashboard und öffentlicher Showcase."
+        description="Titelbild für Dashboard und Showcase"
       >
         <VehicleFahrzeugbildSettings
           tagUuid={scope.linkedTagUuid ?? vehicleId}

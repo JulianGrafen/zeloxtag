@@ -6,7 +6,7 @@ export function formatDiscoverWeeklyRankMeta(
   if (!weeklyRank) return undefined;
   const likes =
     weeklyRank.weeklyLikes === 1
-      ? "1 Like"
-      : `${weeklyRank.weeklyLikes} Likes`;
+      ? "1 Vote"
+      : `${weeklyRank.weeklyLikes} Votes`;
   return `Platz ${weeklyRank.rank} · ${likes}`;
 }

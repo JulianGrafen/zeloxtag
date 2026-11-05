@@ -28,12 +28,12 @@ export function DiscoverBuildOfWeekHero({
     <Link
       href={href}
       className={cn(
-        "group flex flex-col overflow-hidden rounded-2xl border border-amber-400/25 bg-gradient-to-b from-amber-500/10 to-zinc-950 ring-1 ring-white/10 transition active:scale-[0.99]",
+        "group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-[#0b0b0c] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.6)] transition-transform duration-150 active:scale-[0.99]",
         className,
       )}
     >
       <div className="px-4 pt-3">
-        <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-amber-300/90">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-zinc-500">
           Build der Woche
         </p>
         <p className="mt-0.5 truncate text-[1.02rem] font-semibold text-white">
@@ -43,7 +43,7 @@ export function DiscoverBuildOfWeekHero({
           ) : null}
         </p>
         <p className="text-[0.78rem] text-zinc-400">
-          {build.weeklyLikes} Like{build.weeklyLikes === 1 ? "" : "s"} · 7 Tage
+          {build.weeklyLikes} Vote{build.weeklyLikes === 1 ? "" : "s"} · 7 Tage
         </p>
       </div>
       <div className="relative mt-3 aspect-[16/10] w-full bg-zinc-900">

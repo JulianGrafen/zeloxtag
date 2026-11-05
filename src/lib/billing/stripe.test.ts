@@ -43,7 +43,7 @@ describe("buildStripePaymentLinkUrl", () => {
       userId,
       email: "owner@zeloxtag.de",
     });
-    expect(url).toContain("buy.stripe.com/bJefZb2B3dKEbmVb3B0sU00");
+    expect(url).toContain("buy.stripe.com/3cI00d6Rj3609eN9Zx0sU03");
     expect(url).toContain(`client_reference_id=${userId}`);
     expect(url).toContain("prefilled_email=owner%40zeloxtag.de");
     expect(url).toContain("locale=de");
@@ -54,7 +54,7 @@ describe("buildStripePaymentLinkUrl", () => {
       paymentLink: STRIPE_PRO_ANNUAL_PAYMENT_LINK,
       userId,
     });
-    expect(url).toContain("buy.stripe.com/bJe00d5NfcGA62BgnV0sU01");
+    expect(url).toContain("buy.stripe.com/cNicMZ8ZrfSM1Ml5Jh0sU02");
     expect(url).toContain(`client_reference_id=${userId}`);
   });
 

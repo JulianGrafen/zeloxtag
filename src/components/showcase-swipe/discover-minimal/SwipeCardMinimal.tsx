@@ -52,7 +52,7 @@ export function SwipeCardMinimal({
   return (
     <div
       className={cn(
-        "relative flex h-full w-full min-h-0 flex-col overflow-hidden bg-neutral-950 text-white shadow-[0_16px_40px_rgba(0,0,0,0.38)] ring-1 ring-white/10",
+        "relative flex h-full w-full min-h-0 flex-col overflow-hidden bg-[#0b0b0c] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.6)] ring-1 ring-white/10",
         className,
       )}
     >
@@ -94,10 +94,10 @@ export function SwipeCardMinimal({
       {card.totalLikes > 0 && !isBack ? (
         <div
           className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 ring-1 ring-white/15 backdrop-blur-md"
-          aria-label={`${card.totalLikes} Likes gesamt`}
+          aria-label={`${card.totalLikes} Votes gesamt`}
         >
           <Heart
-            className="h-3.5 w-3.5 text-rose-400"
+            className="h-3.5 w-3.5 fill-white text-white"
             fill="currentColor"
             aria-hidden
           />
@@ -110,7 +110,7 @@ export function SwipeCardMinimal({
       {isBack ? null : (
       <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-end px-4 pb-[7.25rem] pt-14">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="text-[1.05rem] font-semibold tracking-tight text-white">
+          <p className="font-[family-name:var(--font-display)] text-[1.2rem] font-semibold tracking-[-0.02em] text-white">
             {title}
           </p>
           {yearLabel ? (

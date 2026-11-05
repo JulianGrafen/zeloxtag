@@ -11,6 +11,10 @@ import { cn } from "@/lib/utils";
 
 import { InstagramGlyph } from "./InstagramGlyph";
 import { ShowroomGroup } from "./ShowroomGroup";
+import {
+  showcasePartnerLogoFrameClassName,
+  showcasePartnerLogoImageClassName,
+} from "./showcase-partner-logo-styles";
 import { showroom } from "./showroom-styles";
 
 type ShowcaseBuiltByPartnerProps = {
@@ -62,22 +66,14 @@ export function ShowcaseBuiltByPartner({
 
   return (
     <section className={cn("px-4", className)} aria-label="Offizieller Erbauer">
-      <h2 className={cn(showroom.sectionLabel, "flex items-center gap-1.5")}>
-        <span>{partner.kicker}</span>
-        <BadgeCheck
-          className="h-3.5 w-3.5 shrink-0 text-sky-400"
-          strokeWidth={2.25}
-          aria-hidden
-        />
-        <span className="sr-only">Verifiziert</span>
-      </h2>
+      <h2 className={showroom.sectionLabel}>{partner.kicker}</h2>
       <ShowroomGroup accent>
         <div className="flex items-center gap-3 px-4 py-3.5">
           <div
             className={cn(
               "relative shrink-0 overflow-hidden rounded-full border border-white/10 bg-black/55 ring-1 ring-white/5",
               logoSrc
-                ? "h-16 w-[calc(4rem*666/375+0.5rem)] max-w-[min(92vw,14rem)] p-1"
+                ? showcasePartnerLogoFrameClassName(partner, "builtBy")
                 : "flex h-11 w-11 items-center justify-center",
             )}
           >
@@ -87,7 +83,7 @@ export function ShowcaseBuiltByPartner({
                 alt={partner.logoAlt ?? partner.name}
                 fill
                 sizes="(max-width: 640px) 40vw, 12rem"
-                className="object-contain object-center scale-[1.3]"
+                className={showcasePartnerLogoImageClassName(partner, "builtBy")}
                 unoptimized
               />
             ) : (
@@ -95,7 +91,15 @@ export function ShowcaseBuiltByPartner({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className={showroom.listTitle}>{partner.name}</p>
+            <p className={cn(showroom.listTitle, "flex min-w-0 items-center gap-1.5")}>
+              <span className="truncate">{partner.name}</span>
+              <BadgeCheck
+                className="h-4 w-4 shrink-0 text-sky-400"
+                strokeWidth={2.25}
+                aria-hidden
+              />
+              <span className="sr-only">Verifiziert</span>
+            </p>
             {instagramHandle ? (
               <a
                 href={instagramProfileUrl(instagramHandle)}

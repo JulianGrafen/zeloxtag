@@ -14,6 +14,11 @@
   --vd-surface: var(--ios-surface);
   --vd-surface-elevated: var(--ios-surface-elevated);
   --vd-border: var(--ios-separator);
+  /* Re-declared here: :root resolves --vd-text from the light --foreground. */
+  --vd-text: #ffffff;
+  --vd-muted: #8e8e93;
+  --foreground: #ffffff;
+  --muted-foreground: #8e8e93;
   --background: var(--ios-bg);
   --card: var(--ios-surface);
   --secondary: var(--ios-surface-elevated);

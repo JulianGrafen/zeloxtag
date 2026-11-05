@@ -57,7 +57,7 @@ export function IOSSheetModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center"
+      className="fixed inset-0 z-[130] flex items-end justify-center"
       role="presentation"
     >
       <button

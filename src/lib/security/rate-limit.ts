@@ -194,4 +194,6 @@ export const RATE_LIMITS = {
   publicSwipe: { limit: 50, windowMs: 60_000 },
   /** Build Planner KI extract (link / image / text). */
   buildPlanner: { limit: 8, windowMs: 60_000 },
+  /** Live-Scan beacon from guest QR scans (per client, across tags). */
+  tagScan: { limit: 20, windowMs: 60_000 },
 } as const;

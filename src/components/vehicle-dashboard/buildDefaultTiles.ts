@@ -164,7 +164,7 @@ function buildExtendedMenuTiles(data: VehicleDashboardData): TileDraft[] {
     },
     {
       id: "vehicle-settings",
-      title: "Showcase",
+      title: "Fahrzeug & Showcase",
       icon: "globe",
       featured: true,
     },

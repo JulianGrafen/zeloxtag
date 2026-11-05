@@ -10,7 +10,7 @@ import {
 
 export { HeicConversionError } from "./convert-heic-to-jpeg";
 
-export type ImageOutputFormat = "png" | "jpeg";
+export type ImageOutputFormat = "png" | "jpeg" | "webp";
 
 async function decodeForCanvas(bytes: Buffer, mime?: string): Promise<Buffer> {
   const heicMime = resolveHeicMime(bytes, mime);
@@ -62,6 +62,10 @@ export async function resizeImageToMaxEdge(
 
   if (format === "jpeg") {
     return canvas.toBuffer("image/jpeg", jpegQuality);
+  }
+  if (format === "webp") {
+    // WebP keeps alpha (cut-out silhouettes) at a fraction of PNG size.
+    return canvas.toBuffer("image/webp", jpegQuality);
   }
   return canvas.toBuffer("image/png");
 }

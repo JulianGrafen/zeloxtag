@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 
-import { AutomotivePageHeader } from "@/components/ui/automotive";
+import { IOSListPage } from "@/components/ui/ios";
 import { vehicleSurfaceHref } from "@/lib/vehicle-surface/paths";
 import type { VehicleSurfaceScope } from "@/lib/vehicle-surface/types";
-import { cn } from "@/lib/utils";
 
 type VehicleSettingsSubpageShellProps = {
   tagUuid: string;
@@ -11,27 +10,31 @@ type VehicleSettingsSubpageShellProps = {
   vehicleSurfaceScope?: VehicleSurfaceScope;
   title: string;
   description?: ReactNode;
+  /** @deprecated Kicker/meta collapsed into the subtitle for one consistent header. */
   kicker?: string;
   meta?: string;
   backHref?: string;
   backLabel?: string;
-  /** OLED discover / swipe — dark header tokens on black. */
+  /** @deprecated Every subpage now uses the same OLED inset-grouped page. */
   theme?: "default" | "discover";
   children: ReactNode;
   /** Portaled FAB / bottom chrome (rendered outside the scroll column). */
   fixedAction?: ReactNode;
 };
 
+/**
+ * Shared frame for every „Mein Fahrzeug“ subpage (Soundcheck, Galerie, Exposé,
+ * Leistungsdiagramm, …): same large-title header, back link and spacing as the
+ * hub and the dashboard lists.
+ */
 export function VehicleSettingsSubpageShell({
   tagUuid,
   vehicleSurfaceScope,
   title,
   description,
-  kicker,
   meta,
   backHref,
-  backLabel = "Showcase",
-  theme = "default",
+  backLabel = "Mein Fahrzeug",
   children,
   fixedAction,
 }: VehicleSettingsSubpageShellProps) {
@@ -42,24 +45,14 @@ export function VehicleSettingsSubpageShell({
       : `/v/${tagUuid}/einstellungen`);
 
   return (
-    <div className="ios-settings-surface min-h-dvh w-full bg-[#000000]">
-      <section
-        className={cn(
-          "mx-auto flex w-full max-w-lg flex-col px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5",
-          theme === "discover" ? "dark gap-4" : "gap-5",
-        )}
-      >
-        <AutomotivePageHeader
-          kicker={kicker}
-          title={title}
-          meta={meta}
-          description={description}
-          backHref={resolvedBackHref}
-          backLabel={backLabel}
-        />
-        {children}
-      </section>
-      {fixedAction}
-    </div>
+    <IOSListPage
+      title={title}
+      subtitle={meta ?? description}
+      backHref={resolvedBackHref}
+      backLabel={backLabel}
+      overlay={fixedAction}
+    >
+      {children}
+    </IOSListPage>
   );
 }

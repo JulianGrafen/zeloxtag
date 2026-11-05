@@ -103,6 +103,13 @@ export function VehicleEngineSoundUpload({
           throw new Error(meta.error);
         }
 
+        const durationForUpload =
+          Number.isFinite(durationSeconds) &&
+          durationSeconds > 0 &&
+          durationSeconds < 86400
+            ? durationSeconds
+            : 1;
+
         const body = new FormData();
         body.append("vehicleId", vehicleId);
         const trimmedTag = tagUuid.trim();
@@ -111,7 +118,7 @@ export function VehicleEngineSoundUpload({
         }
         body.append(
           "durationSeconds",
-          String(durationSeconds > 0 ? durationSeconds : 1),
+          String(durationForUpload),
         );
         body.append("file", file, file.name || "engine-sound");
 

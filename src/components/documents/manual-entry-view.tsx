@@ -172,6 +172,7 @@ export function ManualEntryView({
   const [lineItems, setLineItems] = useState<DocumentLineItem[]>([]);
   const [photos, setPhotos] = useState<PhotoDraft[]>([]);
   const [showOnBuildStory, setShowOnBuildStory] = useState(false);
+  const [showOnPublicShowcase, setShowOnPublicShowcase] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -310,6 +311,7 @@ export function ManualEntryView({
     setNotes(editingDocument.notes ?? "");
     setLineItems(editingDocument.line_items ?? []);
     setShowOnBuildStory(editingDocument.show_on_build_story === true);
+    setShowOnPublicShowcase(Boolean(editingDocument.show_on_public_showcase));
     setPhotos([]);
     setError(null);
   }, [editingDocument]);
@@ -448,6 +450,7 @@ export function ManualEntryView({
   }
 
   function appendBuildStoryOptIn(formData: FormData) {
+    formData.set("showOnPublicShowcase", showOnPublicShowcase ? "true" : "false");
     const enabled =
       canOfferBuildStory &&
       hasPhotoForBuildStory &&
@@ -723,6 +726,15 @@ export function ManualEntryView({
             onAddFiles={(files) => void addPhotoFiles(files)}
             onRemovePhoto={removePhoto}
           />
+
+          <InsetGroupedCard footer="Mit Fotos. Preis und Rechnung bleiben privat.">
+            <ManualEntrySwitchRow
+              label="Im Showcase zeigen"
+              checked={showOnPublicShowcase}
+              disabled={busy}
+              onCheckedChange={setShowOnPublicShowcase}
+            />
+          </InsetGroupedCard>
 
           {canOfferBuildStory && hasPhotoForBuildStory ? (
             <ManualEntryBuildStoryCard
