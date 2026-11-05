@@ -104,7 +104,7 @@ export function VehicleRankCard({
             aria-label={`${build.weeklyLikes} Votes`}
           >
             <Heart
-              className="h-3.5 w-3.5 shrink-0 text-rose-400"
+              className="h-3.5 w-3.5 shrink-0 fill-white/80 text-white/80"
               fill="currentColor"
               aria-hidden
             />
