@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ImagePlus } from "lucide-react";
 
 import { bumpSilhouetteCacheUrl } from "@/lib/vehicles/prefetch-silhouette-image";
 import { SILHOUETTE_DASHBOARD_THUMB_MAX_EDGE } from "@/lib/vehicles/silhouette-constants";
@@ -152,8 +153,9 @@ export function PaywallVehicleHeroVisual({
     <figure
       className={cn(
         "relative w-full overflow-hidden bg-[color:var(--paywall-sheet-bg)]",
-        "min-h-[10.75rem] sm:min-h-[11.5rem]",
-        isCutoutHero && "min-h-[11.25rem] sm:min-h-[12rem]",
+        showPhoto && "min-h-[10.75rem] sm:min-h-[11.5rem]",
+        showPhoto && isCutoutHero && "min-h-[11.25rem] sm:min-h-[12rem]",
+        !showPhoto && "min-h-0",
         className,
       )}
       aria-label={ariaLabel ?? vehicleImageAlt}
@@ -213,8 +215,16 @@ export function PaywallVehicleHeroVisual({
       ) : (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.12)_0%,transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(255,255,255,0.04)_0%,transparent_50%)]"
-        />
+          className="pointer-events-none absolute inset-0 flex min-h-[5.5rem] flex-col items-center justify-center gap-1.5 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.12)_0%,transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(255,255,255,0.04)_0%,transparent_50%)]"
+        >
+          <ImagePlus
+            className="h-6 w-6 text-[color:var(--vd-muted)]"
+            strokeWidth={1.75}
+          />
+          <span className="text-[0.68rem] font-medium text-[color:var(--vd-muted)]">
+            Fahrzeugfoto optional
+          </span>
+        </div>
       )}
       {vehicleImageAlt ? (
         <span className="sr-only">{vehicleImageAlt}</span>
