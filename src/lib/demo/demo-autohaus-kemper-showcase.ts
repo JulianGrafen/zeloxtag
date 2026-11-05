@@ -15,8 +15,7 @@ export const DEMO_AUTOHAUS_KEMPER_TAG_UUID = "demo-autohaus-kemper";
 
 export const MOCK_AUTOHAUS_KEMPER_VEHICLE_ID = "veh_demo_kemper_black_betty";
 export const DEMO_AUTOHAUS_KEMPER_INSTAGRAM_HANDLE = "autohauskemper";
-export const DEMO_AUTOHAUS_KEMPER_PARTNER_WEB_URL =
-  "https://www.autohaus-kemper.de/";
+export const DEMO_AUTOHAUS_KEMPER_PARTNER_WEB_URL = "https://uniqueproject.de/";
 export const DEMO_AUTOHAUS_KEMPER_SHOWCASE_IMAGE =
   "/demo/autohaus-kemper-black-betty-front.jpg";
 export const DEMO_AUTOHAUS_KEMPER_GALLERY_SIDE_IMAGE =
