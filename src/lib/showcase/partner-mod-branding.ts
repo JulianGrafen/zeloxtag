@@ -23,6 +23,9 @@ export function modMatchesPartnerBrand(
   if (vendor.includes("rw edition") || label.includes("rw edition")) {
     return true;
   }
+  if (vendor.includes("kemper") || label.includes("kemper")) {
+    return true;
+  }
   if (partnerToken.length >= 3 && vendor.includes(partnerToken)) {
     return true;
   }

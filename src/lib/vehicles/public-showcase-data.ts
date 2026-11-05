@@ -104,6 +104,8 @@ export type PublicShowcaseB2bPartner = {
   name: string;
   logoSrc?: string | null;
   logoAlt?: string;
+  /** Wide horizontal logo (e.g. Kemper) vs default emblem in the pill. */
+  logoPresentation?: "emblem" | "wordmark";
   /** Partner web / catalog link (Umbauten badges, optional secondary CTA). */
   ctaLabel: string;
   ctaHref: string;

@@ -16,6 +16,7 @@ import { formatDocumentDate } from "@/lib/documents/format";
 import { cn } from "@/lib/utils";
 
 import { ModBadge } from "./ModBadge";
+import { ShowcasePartnerLogoMark } from "./ShowcasePartnerLogoMark";
 import { ShowcasePartnerVendorBadge } from "./ShowcasePartnerVendorBadge";
 import { ShowroomDisclosure } from "./ShowroomDisclosure";
 import { ShowroomGroup } from "./ShowroomGroup";
@@ -48,6 +49,33 @@ function formatDate(iso: string | null): string | null {
   if (!iso) return null;
   const label = formatDocumentDate(iso);
   return label === "Ohne Datum" ? null : label;
+}
+
+function umbautenPartnerLogo(
+  partnerBranding: PublicShowcaseB2bPartner | null | undefined,
+  size: "sm" | "md" = "md",
+) {
+  if (!partnerBranding?.logoSrc?.trim()) return null;
+  return <ShowcasePartnerLogoMark partner={partnerBranding} size={size} />;
+}
+
+function UmbautenSectionHeader({
+  partnerBranding,
+}: {
+  partnerBranding?: PublicShowcaseB2bPartner | null;
+}) {
+  const logo = umbautenPartnerLogo(partnerBranding, "md");
+  return (
+    <div
+      className={cn(
+        "mb-3 flex min-w-0 items-center gap-3 px-1",
+        logo ? "justify-between" : null,
+      )}
+    >
+      <h2 className={showroom.sectionTitle}>Umbauten</h2>
+      {logo}
+    </div>
+  );
 }
 
 function UmbautenList({
@@ -177,6 +205,14 @@ function ShowroomModCarouselCard({
             {priceLabel}
           </p>
         ) : null}
+        {isPartnerMod && partnerBranding ? (
+          <div className="mt-2 flex min-w-0 items-center gap-1.5">
+            <span className="shrink-0 text-[0.68rem] font-medium lowercase tracking-wide text-white/55">
+              by
+            </span>
+            {umbautenPartnerLogo(partnerBranding, "sm")}
+          </div>
+        ) : null}
       </div>
     </>
   );
@@ -241,6 +277,7 @@ export function ShowroomMods({
       <ShowroomDisclosure
         title="Umbauten"
         subtitle={countSubtitle}
+        titleTrailing={umbautenPartnerLogo(partnerBranding, "sm")}
         open={listOpen}
         onToggle={() => setListOpen((open) => !open)}
         panelId="showroom-mods-disclosure"
@@ -255,9 +292,7 @@ export function ShowroomMods({
 
   const section = hasGalleryImages ? (
     <section className="min-w-0">
-      <div className="mb-3 px-1">
-        <h2 className={showroom.sectionTitle}>Umbauten</h2>
-      </div>
+      <UmbautenSectionHeader partnerBranding={partnerBranding} />
       {carousel}
     </section>
   ) : (

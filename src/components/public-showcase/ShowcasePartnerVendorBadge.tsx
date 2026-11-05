@@ -6,6 +6,10 @@ import { partnerBrandHref } from "@/lib/showcase/partner-mod-branding";
 import { cn } from "@/lib/utils";
 
 import { ModBadge } from "./ModBadge";
+import {
+  showcasePartnerLogoFrameClassName,
+  showcasePartnerLogoImageClassName,
+} from "./showcase-partner-logo-styles";
 
 type ShowcasePartnerVendorBadgeProps = {
   partner: PublicShowcaseB2bPartner;
@@ -38,13 +42,18 @@ export function ShowcasePartnerVendorBadge({
       aria-label={`${partner.name} — Partnerseite öffnen`}
     >
       {logoSrc ? (
-        <span className="relative block h-11 w-[calc(2.375rem*666/375+0.1rem)] max-w-[4.65rem] shrink-0 overflow-hidden rounded-full">
+        <span
+          className={cn(
+            "relative block shrink-0 overflow-hidden rounded-full",
+            showcasePartnerLogoFrameClassName(partner, "vendorBadge"),
+          )}
+        >
           <Image
             src={logoSrc}
             alt={partner.logoAlt ?? partner.name}
             fill
             sizes="120px"
-            className="object-contain object-center scale-[1.48]"
+            className={showcasePartnerLogoImageClassName(partner, "vendorBadge")}
             unoptimized
           />
         </span>

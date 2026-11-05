@@ -9,6 +9,7 @@ describe("getTagByUuid mock document load", () => {
     expect(isMockTagUuid(MOCK_TAG_UUIDS.aulitzky)).toBe(true);
     expect(isMockTagUuid(MOCK_TAG_UUIDS.undergroundGarage)).toBe(true);
     expect(isMockTagUuid(MOCK_TAG_UUIDS.rwEdition)).toBe(true);
+    expect(isMockTagUuid(MOCK_TAG_UUIDS.kemper)).toBe(true);
   });
 
   it("demo catalog includes invoices and abes for profile sections", () => {

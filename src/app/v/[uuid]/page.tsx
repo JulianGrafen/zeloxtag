@@ -55,6 +55,7 @@ import {
 import { buildDemoAulitzkyPublicShowcasePayload } from "@/lib/demo/demo-aulitzky-showcase";
 import { buildDemoUndergroundGaragePublicShowcasePayload } from "@/lib/demo/demo-underground-garage-showcase";
 import { buildDemoRwEditionPublicShowcasePayload } from "@/lib/demo/demo-rw-edition-showcase";
+import { buildDemoAutohausKemperPublicShowcasePayload } from "@/lib/demo/demo-autohaus-kemper-showcase";
 import {
   buildDemoPublicShowcasePayload,
   enrichDemoShowcaseVehicle,
@@ -512,6 +513,17 @@ export default async function TagScanPage({
           <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
             <PublicShowcaseView
               data={buildDemoRwEditionPublicShowcasePayload()}
+              revealShowroomStatsOnMount
+            />
+          </TagScanRitualGate>
+        );
+      }
+
+      if (tag.uuid === MOCK_TAG_UUIDS.kemper) {
+        return (
+          <TagScanRitualGate tagUuid={tag.uuid} enabled={playScanRitual}>
+            <PublicShowcaseView
+              data={buildDemoAutohausKemperPublicShowcasePayload()}
               revealShowroomStatsOnMount
             />
           </TagScanRitualGate>

@@ -12,6 +12,8 @@ import { showroom } from "./showroom-styles";
 type ShowroomDisclosureProps = {
   title: string;
   subtitle?: string;
+  /** e.g. partner logo beside the disclosure title. */
+  titleTrailing?: ReactNode;
   open: boolean;
   onToggle?: () => void;
   panelId: string;
@@ -23,6 +25,7 @@ type ShowroomDisclosureProps = {
 export function ShowroomDisclosure({
   title,
   subtitle,
+  titleTrailing = null,
   open,
   onToggle,
   panelId,
@@ -68,6 +71,7 @@ export function ShowroomDisclosure({
           aria-controls={panelId}
         >
           {headerContent}
+          {titleTrailing}
           {chevron}
         </button>
       ) : (
@@ -78,6 +82,7 @@ export function ShowroomDisclosure({
           )}
         >
           {headerContent}
+          {titleTrailing}
         </div>
       )}
 
