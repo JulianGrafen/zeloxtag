@@ -16,6 +16,21 @@ describe("normalizeFuelFillInput", () => {
     }
   });
 
+  it("derives total from liters and liter price on save", () => {
+    const result = normalizeFuelFillInput({
+      ...emptyFuelFillFormState(),
+      fuelLiters: "40",
+      pricePerLiterEur: "1,899",
+      amountEur: "",
+      odometerKm: "120000",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.amountEur).toBe(75.96);
+      expect(result.value.fuelLiters).toBe(40);
+    }
+  });
+
   it("accepts valid fuel fill", () => {
     const result = normalizeFuelFillInput({
       ...emptyFuelFillFormState(),
