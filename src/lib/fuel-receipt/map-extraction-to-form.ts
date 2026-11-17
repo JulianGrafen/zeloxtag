@@ -1,29 +1,9 @@
+import {
+  formatFuelAmountForInput,
+  formatFuelLitersForInput,
+  formatFuelPricePerLiterForInput,
+} from "./fuel-fill-format";
 import type { FuelFillFormState, FuelReceiptExtraction } from "./types";
-
-function formatAmountForInput(value: number): string {
-  const rounded = Math.round(value * 100) / 100;
-  return rounded.toLocaleString("de-DE", {
-    minimumFractionDigits: rounded % 1 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-function formatPricePerLiterForInput(value: number): string {
-  const rounded = Math.round(value * 1000) / 1000;
-  return rounded.toLocaleString("de-DE", {
-    minimumFractionDigits: rounded % 1 === 0 ? 0 : 3,
-    maximumFractionDigits: 3,
-  });
-}
-
-function formatLitersForInput(value: number): string {
-  const rounded = Math.round(value * 1000) / 1000;
-  const text = rounded.toLocaleString("de-DE", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 3,
-  });
-  return text;
-}
 
 export function mapExtractionToFuelFillForm(
   extraction: FuelReceiptExtraction,
@@ -40,7 +20,7 @@ export function mapExtractionToFuelFillForm(
     Number.isFinite(extraction.totalAmount) &&
     extraction.totalAmount > 0
   ) {
-    next.amountEur = formatAmountForInput(extraction.totalAmount);
+    next.amountEur = formatFuelAmountForInput(extraction.totalAmount);
   }
 
   if (
@@ -48,7 +28,7 @@ export function mapExtractionToFuelFillForm(
     Number.isFinite(extraction.liters) &&
     extraction.liters > 0
   ) {
-    next.fuelLiters = formatLitersForInput(extraction.liters);
+    next.fuelLiters = formatFuelLitersForInput(extraction.liters);
   }
 
   if (
@@ -56,7 +36,9 @@ export function mapExtractionToFuelFillForm(
     Number.isFinite(extraction.pricePerLiter) &&
     extraction.pricePerLiter > 0
   ) {
-    next.pricePerLiterEur = formatPricePerLiterForInput(extraction.pricePerLiter);
+    next.pricePerLiterEur = formatFuelPricePerLiterForInput(
+      extraction.pricePerLiter,
+    );
   }
 
   return next;
