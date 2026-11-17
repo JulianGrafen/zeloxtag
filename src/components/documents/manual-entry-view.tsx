@@ -385,7 +385,17 @@ export function ManualEntryView({
           rejectReason = "Nur Bilder (Foto / Galerie) sind erlaubt.";
           continue;
         }
-        const compressed = await compressFile(raw);
+        // One bad file (e.g. unreadable HEIC) must not drop the others.
+        let compressed: Awaited<ReturnType<typeof compressFile>>;
+        try {
+          compressed = await compressFile(raw);
+        } catch (fileError) {
+          rejectReason =
+            fileError instanceof Error
+              ? `${raw.name}: ${fileError.message}`
+              : `${raw.name} konnte nicht gelesen werden.`;
+          continue;
+        }
         next.push({
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           file: compressed.file,
@@ -394,6 +404,7 @@ export function ManualEntryView({
       }
       if (next.length > 0) {
         setPhotos((prev) => [...prev, ...next].slice(0, photoLimit));
+        if (rejectReason) setError(rejectReason);
       } else {
         setError(rejectReason ?? "Kein Foto konnte hinzugefügt werden.");
       }

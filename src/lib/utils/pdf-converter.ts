@@ -18,6 +18,8 @@ export type PdfFromImageOptions = {
   fullBleed?: boolean;
   /** jsPDF addImage compression. Prefer NONE/SLOW for OCR accuracy. */
   imageCompression?: "NONE" | "FAST" | "MEDIUM" | "SLOW";
+  /** Max total bytes of embedded images (default: Vercel-safe upload budget). */
+  totalBudgetBytes?: number;
 };
 
 export type PdfConversionResult = {
@@ -65,7 +67,7 @@ async function sourceToJpegDataUrlWithSize(source: PdfImageSource): Promise<{
     };
   }
 
-  const dataUrl = await blobToDataUrl(source);
+  const dataUrl = await blobToDataUrl(await fitBlobToPdfBudget(source));
   const size = await probeDataUrlSize(dataUrl).catch(() => ({
     width: 1240,
     height: Math.round(1240 / A4_ASPECT),
@@ -128,6 +130,50 @@ export async function convertImageToPdf(
  * Combine page images into one multi-page PDF.
  * Use `fullBleed: true` for Document Intelligence (preserves pixel detail).
  */
+/**
+ * Server Actions on Vercel reject request bodies > 4.5 MB with an HTML error
+ * page („An unexpected response was received from the server“). Multi-photo
+ * PDFs therefore share one byte budget across all pages.
+ */
+export const PDF_UPLOAD_BUDGET_BYTES = Math.floor(3.5 * 1024 * 1024);
+let activePageBudgetBytes: number | null = null;
+
+async function fitBlobToPdfBudget(blob: Blob): Promise<Blob> {
+  const budget = activePageBudgetBytes;
+  if (!budget || blob.size <= budget || !blob.type.startsWith("image/")) {
+    return blob;
+  }
+  try {
+    const bitmap = await createImageBitmap(blob);
+    // Bytes scale ~ with pixel area → shrink edge by sqrt of the ratio.
+    let scale = Math.min(1, Math.sqrt(budget / blob.size) * 0.95);
+    let quality = 0.82;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) break;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const out = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", quality),
+      );
+      if (out && out.size <= budget) {
+        bitmap.close?.();
+        return out;
+      }
+      scale *= 0.8;
+      quality = Math.max(0.6, quality - 0.08);
+    }
+    bitmap.close?.();
+  } catch {
+    // Fall through: keep original if the browser can't decode it.
+  }
+  return blob;
+}
+
 export async function convertImagesToPdf(
   sources: PdfImageSource[],
   options: PdfFromImageOptions = {},
@@ -135,6 +181,21 @@ export async function convertImagesToPdf(
   if (sources.length === 0) {
     throw new Error("Mindestens eine Seite wird für das PDF benötigt.");
   }
+  const previousBudget = activePageBudgetBytes;
+  activePageBudgetBytes = Math.floor(
+    (options.totalBudgetBytes ?? PDF_UPLOAD_BUDGET_BYTES) / sources.length,
+  );
+  try {
+    return await convertImagesToPdfUnbudgeted(sources, options);
+  } finally {
+    activePageBudgetBytes = previousBudget;
+  }
+}
+
+async function convertImagesToPdfUnbudgeted(
+  sources: PdfImageSource[],
+  options: PdfFromImageOptions,
+): Promise<PdfConversionResult> {
 
   const marginMm = options.marginMm ?? 8;
   const fileName = options.fileName?.replace(/\.pdf$/i, "") || "rechnung-scan";
