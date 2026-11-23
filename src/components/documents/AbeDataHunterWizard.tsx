@@ -20,6 +20,7 @@ import {
 } from "@/components/documents/abe-review-ui";
 import { AbeVehicleTableWatermark } from "@/components/documents/abe-vehicle-table-watermark";
 import { InBrowserCamera, type GuideFrameType } from "@/components/documents/in-browser-camera";
+import { ScanProcessingPanel } from "@/components/documents/scan-processing-panel";
 import { PressableButton } from "@/components/vehicle-dashboard/Pressable";
 import {
   ABE_CAPTURE_JPEG_QUALITY,
@@ -2428,8 +2429,19 @@ export function AbeDataHunterWizard({
     setHuntMode("pdf");
     setSourcePdf(file);
     setHuntSessionKey((current) => current + 1);
-    queueModeRef.current = "kba";
-    setPhase("kba-hunt");
+    // PDFs skip the camera-only KBA step: hunt-all reads KBA plus every other
+    // field in one pass, and the hunt phase offers a camera fallback for gaps.
+    queueModeRef.current = "all";
+    setPhase("hunt");
+    enqueueFile(file);
+  }
+
+  /** Camera file picker: a PDF switches the wizard into PDF mode. */
+  function handleHuntCapture(file: File) {
+    if (isPdfFile(file)) {
+      startPdfHunt(file);
+      return;
+    }
     enqueueFile(file);
   }
 
@@ -3186,7 +3198,7 @@ export function AbeDataHunterWizard({
           {...ABE_CAMERA_PROPS}
           hint={kbaScanHint(analyzing)}
           guideWatermark={ABE_HUNT_FIELD_WATERMARKS.kbaNumber}
-          onCapture={enqueueFile}
+          onCapture={handleHuntCapture}
           onClose={returnToChooser}
         />
       </>
@@ -3247,7 +3259,18 @@ export function AbeDataHunterWizard({
     return (
       <>
         {errorBanner}
-        <div className="fixed inset-0 bg-neutral-950" aria-hidden />
+        <div className="fixed inset-0 flex items-center justify-center bg-neutral-950 px-4">
+          {analyzing ? (
+            <ScanProcessingPanel
+              detail="ABE-PDF wird analysiert…"
+              hint="KBA · Hersteller · Fahrzeugtabelle · etwa 15–40 Sekunden"
+              state="solving"
+              surface="inverse"
+              theme="dark"
+              centeredBlock
+            />
+          ) : null}
+        </div>
         {progressOverlay}
         {switchToCameraButton}
       </>
@@ -3272,7 +3295,7 @@ export function AbeDataHunterWizard({
             ? "center"
             : "top"
         }
-        onCapture={enqueueFile}
+        onCapture={handleHuntCapture}
         onClose={returnToChooser}
       />
     </>
