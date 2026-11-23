@@ -92,7 +92,7 @@ import {
   selectedVerkaufsbezeichnungPayload,
   verkaufsbezeichnungForAbeHuntGroup,
 } from "@/lib/ocr/abe-wizard-vehicle-match";
-import { convertImagesToPdf } from "@/lib/utils/pdf-converter";
+import { convertImagesToPdf, shrinkPdfForUpload } from "@/lib/utils/pdf-converter";
 import type { AbeVehicleContext } from "@/lib/validations/abeSchema";
 import {
   normalizeAbeKbaDigits,
@@ -397,6 +397,17 @@ type AbeOcrStepResult<T> = {
   scanSessionId?: string;
 };
 
+/** Platform error pages (Vercel 413/504) return HTML, not our JSON shape. */
+function nonJsonOcrErrorMessage(status: number): string {
+  if (status === 413) {
+    return "Datei zu groß für die Analyse — bitte ein kleineres PDF wählen oder die Seiten fotografieren.";
+  }
+  if (status === 504 || status === 502) {
+    return "Analyse hat zu lange gedauert — bitte erneut versuchen oder die Seiten fotografieren.";
+  }
+  return `Analyse fehlgeschlagen (HTTP ${status}). Bitte erneut versuchen.`;
+}
+
 async function postAbeOcrStep<T>(
   vehicleId: string,
   file: File,
@@ -418,7 +429,9 @@ async function postAbeOcrStep<T>(
     | null;
 
   if (!response.ok || !payload || payload.ok !== true) {
-    const { message, code } = readOcrErrorPayload(payload);
+    const { message, code } = payload
+      ? readOcrErrorPayload(payload)
+      : { message: nonJsonOcrErrorMessage(response.status), code: undefined };
     notifyOcrError(message, code);
     throw new HuntApiError(message);
   }
@@ -1921,6 +1934,7 @@ export function AbeDataHunterWizard({
   );
   const [photos, setPhotos] = useState<File[]>([]);
   const [sourcePdf, setSourcePdf] = useState<File | null>(null);
+  const pdfPrepTokenRef = useRef(0);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzingPdf, setAnalyzingPdf] = useState(false);
   const [queuedCount, setQueuedCount] = useState(0);
@@ -2365,6 +2379,7 @@ export function AbeDataHunterWizard({
   }
 
   function returnToChooser() {
+    pdfPrepTokenRef.current += 1;
     queueRef.current = [];
     auflagenQueueRef.current = [];
     drainingRef.current = false;
@@ -2426,14 +2441,33 @@ export function AbeDataHunterWizard({
     }
     setManualKbaInput("");
     resetKbaScanFailCount();
+    setHuntError(null);
     setHuntMode("pdf");
-    setSourcePdf(file);
+    setSourcePdf(null);
     setHuntSessionKey((current) => current + 1);
     // PDFs skip the camera-only KBA step: hunt-all reads KBA plus every other
     // field in one pass, and the hunt phase offers a camera fallback for gaps.
     queueModeRef.current = "all";
     setPhase("hunt");
-    enqueueFile(file);
+    setAnalyzing(true);
+    setAnalyzingPdf(true);
+
+    // Large scanned PDFs exceed Vercel's 4.5 MB body limit (→ HTML 413,
+    // "Analyse fehlgeschlagen"). Shrink once; the result is reused for save.
+    const token = ++pdfPrepTokenRef.current;
+    void shrinkPdfForUpload(file)
+      .then((prepared) => {
+        if (token !== pdfPrepTokenRef.current) return;
+        enqueueFile(prepared);
+      })
+      .catch(() => {
+        if (token !== pdfPrepTokenRef.current) return;
+        setAnalyzing(false);
+        setAnalyzingPdf(false);
+        setHuntError(
+          "PDF konnte nicht gelesen werden (evtl. passwortgeschützt). Bitte die Seiten fotografieren.",
+        );
+      });
   }
 
   /** Camera file picker: a PDF switches the wizard into PDF mode. */
@@ -2446,6 +2480,7 @@ export function AbeDataHunterWizard({
   }
 
   function restart() {
+    pdfPrepTokenRef.current += 1;
     queueRef.current = [];
     auflagenQueueRef.current = [];
     drainingRef.current = false;

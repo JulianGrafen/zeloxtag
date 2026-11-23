@@ -369,6 +369,76 @@ export async function rasterizePdfFirstPage(
   return canvas;
 }
 
+function canvasToJpegBlob(canvas: HTMLCanvasElement, quality = 0.85): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) =>
+        blob ? resolve(blob) : reject(new Error("Seite konnte nicht gerendert werden.")),
+      "image/jpeg",
+      quality,
+    );
+  });
+}
+
+/**
+ * Uploaded PDFs above the Vercel-safe budget (scanned ABEs are often 5–20 MB)
+ * would be rejected with a non-JSON 413. Re-render the first pages as JPEGs
+ * and rebuild a compact image PDF that fits {@link PDF_UPLOAD_BUDGET_BYTES}.
+ * Small PDFs are returned unchanged (keeps the text layer).
+ */
+export async function shrinkPdfForUpload(
+  file: File,
+  { maxPages = 16, maxWidth = 1600 }: { maxPages?: number; maxWidth?: number } = {},
+): Promise<File> {
+  if (file.size <= PDF_UPLOAD_BUDGET_BYTES || typeof document === "undefined") {
+    return file;
+  }
+
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
+
+  const bytes = await file.arrayBuffer();
+  let pdf;
+  try {
+    pdf = await pdfjs.getDocument({ data: bytes }).promise;
+  } catch (error) {
+    const { isPdfJsPasswordError } = await import("@/lib/ocr/pdf-js-document");
+    if (!isPdfJsPasswordError(error)) throw error;
+    pdf = await pdfjs.getDocument({ data: bytes, password: "" }).promise;
+  }
+
+  try {
+    const pageCount = Math.min(pdf.numPages, maxPages);
+    const pages: Blob[] = [];
+    for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const baseViewport = page.getViewport({ scale: 1 });
+      const scale = Math.min(2.5, maxWidth / Math.max(1, baseViewport.width));
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(viewport.width));
+      canvas.height = Math.max(1, Math.round(viewport.height));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas ist in diesem Browser nicht verfügbar.");
+      await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+      pages.push(await canvasToJpegBlob(canvas));
+      canvas.width = 0;
+      canvas.height = 0;
+      page.cleanup();
+    }
+
+    const result = await convertImagesToPdf(pages, {
+      fileName: file.name.replace(/\.pdf$/i, "") || "dokument",
+      fullBleed: true,
+      imageCompression: "MEDIUM",
+    });
+    return result.file;
+  } finally {
+    const { destroyPdfDocument } = await import("@/lib/ocr/destroy-pdf-document");
+    await destroyPdfDocument(pdf);
+  }
+}
+
 /** Fetch a public PDF URL and render page 1 to canvas (showcase dyno preview). */
 export async function rasterizePdfFirstPageFromUrl(
   url: string,
