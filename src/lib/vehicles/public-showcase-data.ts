@@ -12,6 +12,7 @@ import { hasStoredModificationImage } from "@/lib/vehicles/build-story-document"
 import { buildShowcaseBuildDnaFingerprint } from "@/lib/showcase/build-dna-fingerprint";
 import { buildBuildDnaProfileContext } from "@/lib/showcase/build-dna-profile-context";
 import { isBuildDnaEligible } from "@/lib/showcase/build-dna-eligibility";
+import { resolveKnownWorkshopPartner } from "@/lib/showcase/known-workshop-partners";
 import { computeBuildDnaHeuristic } from "@/lib/showcase/build-dna-heuristic";
 import {
   parseShowcaseBuildDna,
@@ -417,6 +418,7 @@ export function buildPublicShowcasePayload(
     serviceBook: mapPublicServiceBookEntries(serviceRecords),
     buildDna: resolvePublicBuildDna(vehicle, modifications),
     buildStory: null,
+    b2bPartner: resolveKnownWorkshopPartner(documents),
   };
 }
 

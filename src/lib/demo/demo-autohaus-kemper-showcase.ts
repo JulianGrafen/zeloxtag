@@ -3,6 +3,11 @@ import {
   BUILD_DNA_SCHEMA_VERSION,
   type ShowcaseBuildDna,
 } from "@/lib/showcase/build-dna-schema";
+import {
+  AUTOHAUS_KEMPER_B2B_PARTNER,
+  AUTOHAUS_KEMPER_LOGO_SRC,
+  AUTOHAUS_KEMPER_PARTNER_WEB_URL,
+} from "@/lib/showcase/known-workshop-partners";
 import { buildPublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import type { PublicShowcasePayload } from "@/lib/vehicles/public-showcase-data";
 import type { Document, Tag, TagScanResult, Vehicle } from "@/types/database";
@@ -15,7 +20,7 @@ export const DEMO_AUTOHAUS_KEMPER_TAG_UUID = "demo-autohaus-kemper";
 
 export const MOCK_AUTOHAUS_KEMPER_VEHICLE_ID = "veh_demo_kemper_black_betty";
 export const DEMO_AUTOHAUS_KEMPER_INSTAGRAM_HANDLE = "autohauskemper";
-export const DEMO_AUTOHAUS_KEMPER_PARTNER_WEB_URL = "https://uniqueproject.de/";
+export const DEMO_AUTOHAUS_KEMPER_PARTNER_WEB_URL = AUTOHAUS_KEMPER_PARTNER_WEB_URL;
 export const DEMO_AUTOHAUS_KEMPER_SHOWCASE_IMAGE =
   "/demo/autohaus-kemper-black-betty-front.jpg";
 export const DEMO_AUTOHAUS_KEMPER_GALLERY_SIDE_IMAGE =
@@ -24,8 +29,7 @@ export const DEMO_AUTOHAUS_KEMPER_GALLERY_MEET_IMAGE =
   "/demo/autohaus-kemper-black-betty-meet.jpg";
 export const DEMO_AUTOHAUS_KEMPER_GALLERY_WHEEL_IMAGE =
   "/demo/autohaus-kemper-black-betty-wheel.jpg";
-export const DEMO_AUTOHAUS_KEMPER_LOGO_SRC =
-  "/demo/autohaus-kemper-unique-projects-logo.png";
+export const DEMO_AUTOHAUS_KEMPER_LOGO_SRC = AUTOHAUS_KEMPER_LOGO_SRC;
 
 const KEMPER_SPEC_NOTES =
   "Unique Project „Black Betty“ von Autohaus Kemper: VW Golf V R32 mit Carbon-Breitbau, " +
@@ -265,14 +269,6 @@ export function buildDemoAutohausKemperPublicShowcasePayload(): PublicShowcasePa
     },
     buildDna: DEMO_AUTOHAUS_KEMPER_BUILD_DNA,
     buildStory: null,
-    b2bPartner: {
-      kicker: "Built by",
-      name: "Autohaus Kemper",
-      logoSrc: DEMO_AUTOHAUS_KEMPER_LOGO_SRC,
-      logoAlt: "Unique Projects by Autohaus Kemper",
-      logoPresentation: "wordmark",
-      ctaLabel: "Projekt anfragen",
-      ctaHref: DEMO_AUTOHAUS_KEMPER_PARTNER_WEB_URL,
-    },
+    b2bPartner: { ...AUTOHAUS_KEMPER_B2B_PARTNER },
   };
 }
